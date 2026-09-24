@@ -49,7 +49,7 @@ class GEESettingsDialog(object):
         self.parent = parent
         p_win = parent.root if hasattr(parent, 'root') else parent
         self.top = tk.Toplevel(p_win)
-        self.top.title(u"Configurações - GEE ArcGIS Plugin")
+        self.top.title(u"Configurações - CGMA ArcGEE Explorer")
         self.top.geometry("540x670")
         self.top.resizable(False, False)
         self.top.transient(p_win)
@@ -303,7 +303,7 @@ class GEEAboutDialog(object):
         self.parent = parent
         p_win = parent.root if hasattr(parent, 'root') else parent
         self.top = tk.Toplevel(p_win)
-        self.top.title(u"Sobre - CGMA ArcGIS GEE Plugin")
+        self.top.title(u"Sobre - CGMA ArcGEE Explorer")
         self.top.geometry("560x490")
         self.top.resizable(False, False)
         self.top.transient(p_win)
@@ -321,7 +321,7 @@ class GEEAboutDialog(object):
 
         lbl_title = tk.Label(
             pad,
-            text=u"CGMA ArcGIS GEE Plugin",
+            text=u"CGMA ArcGEE Explorer",
             font=("Segoe UI", 14, "bold"),
             fg="#0b5345"
         )
@@ -329,7 +329,7 @@ class GEEAboutDialog(object):
 
         lbl_sub = tk.Label(
             pad,
-            text=u"Google Earth Engine Integration for ArcGIS Desktop 10.8 (ArcMap)  |  v1.4",
+            text=u"Google Earth Engine Explorer for ArcGIS Desktop 10.8 (ArcMap)  |  v1.4",
             font=("Segoe UI", 9, "italic"),
             fg="#566573"
         )
@@ -391,7 +391,7 @@ class GEEUpdaterDialog(object):
     def __init__(self, parent):
         self.parent = parent
         self.top = tk.Toplevel(parent.root if hasattr(parent, 'root') else parent)
-        self.top.title(u"Atualizar Plugin - GEE ArcGIS")
+        self.top.title(u"Atualizar - CGMA ArcGEE Explorer")
         self.top.geometry("540x380")
         self.top.resizable(False, False)
         self.top.transient(parent.root if hasattr(parent, 'root') else parent)
@@ -410,7 +410,7 @@ class GEEUpdaterDialog(object):
 
         lbl_head = tk.Label(
             pad,
-            text=u"Atualização do CGMA ArcGIS GEE Plugin",
+            text=u"Atualização do CGMA ArcGEE Explorer",
             font=("Segoe UI", 12, "bold"),
             fg="#1b4f72"
         )
@@ -655,7 +655,7 @@ def normalize_date(d_str):
 class GEEPluginWindow(object):
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title(u"Google Earth Engine - Seletor Multibanda & Índices (ArcGIS 10.8)  |  v1.4")
+        self.root.title(u"CGMA ArcGEE Explorer (ArcGIS 10.8)  |  v1.4")
         self.root.geometry("1100x740")
         self.root.minsize(960, 640)
 
@@ -1048,7 +1048,7 @@ class GEEPluginWindow(object):
         self.btn_mosaic_toc.pack(side=tk.LEFT)
 
         # 3. Barra de Status Inferior com Progresso
-        self.lbl_progress = ttk.Label(self.root, text=u"Pronto. (v1.4 - Resolução Nativa Estrita 100% & Recorte por AOI/Tela)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
+        self.lbl_progress = ttk.Label(self.root, text=u"Pronto. (CGMA ArcGEE Explorer v1.4 - Resolução Nativa Estrita 100%)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
         self.lbl_progress.pack(fill=tk.X, side=tk.BOTTOM)
 
     def update_map_scale_display(self):

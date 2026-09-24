@@ -2,7 +2,7 @@
 chcp 65001 >nul
 cls
 echo ==============================================================================
-echo           ATUALIZADOR DO CGMA ARCGIS GEE PLUGIN
+echo                 ATUALIZADOR DO CGMA ARCGEE EXPLORER
 echo ==============================================================================
 echo.
 echo Este utilitario sincroniza os arquivos mais recentes do GitHub e

@@ -2,7 +2,7 @@
 chcp 65001 >nul
 cls
 echo ==============================================================================
-echo           DESINSTALADOR DO CGMA ARCGIS GEE PLUGIN
+echo                DESINSTALADOR DO CGMA ARCGEE EXPLORER
 echo ==============================================================================
 echo.
 echo Este assistente ira desinstalar o Add-In do ArcGIS Desktop 10.8 e limpar

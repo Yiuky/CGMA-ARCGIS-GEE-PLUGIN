@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-title Instalador - CGMA ArcGIS GEE Plugin v1.2
+title Instalador - CGMA ArcGEE Explorer v1.4
 cls
 echo ======================================================================
-echo          CGMA ARCGIS GEE PLUGIN - INSTALADOR AUTOMATIZADO (v1.2)
+echo          CGMA ARCGEE EXPLORER - INSTALADOR AUTOMATIZADO (v1.4)
 echo         Google Earth Engine integrado ao ArcGIS Desktop 10.8.2
 echo ======================================================================
 echo.

@@ -1,4 +1,4 @@
-# CGMA ArcGIS GEE Plugin (v1.4)
+# CGMA ArcGEE Explorer (v1.4)
 
 [![ArcGIS](https://img.shields.io/badge/ArcGIS%20Desktop-10.8%20%7C%2010.8.2-blue.svg)](https://www.esri.com/)
 [![Google Earth Engine](https://img.shields.io/badge/Google%20Earth%20Engine-API-green.svg)](https://earthengine.google.com/)
@@ -6,9 +6,9 @@
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Versão-v1.4%20Estável-brightgreen.svg)]()
 
-Plugin avançado para o **ArcGIS Desktop 10.8 / 10.8.2 (ArcMap)** que integra diretamente a infraestrutura do **Google Earth Engine (GEE)** ao ambiente SIG da Esri. Permite pesquisar, filtrar, pré-visualizar e descarregar imagens de satélite (**Sentinel-2** e **Landsats 1 a 8**), índices espectrais e matemática de bandas diretamente na Tabela de Conteúdos (**TOC**) do ArcMap com **garantia estrita de 100% da resolução nativa** (sem reamostragem ou degradação de qualidade).
+Ferramenta avançada para o **ArcGIS Desktop 10.8 / 10.8.2 (ArcMap)** que integra diretamente a infraestrutura do **Google Earth Engine (GEE)** ao ambiente SIG da Esri. O **CGMA ArcGEE Explorer** permite pesquisar, filtrar, pré-visualizar e descarregar imagens de satélite (**Sentinel-2** e **Landsats 1 a 8**), índices espectrais e matemática de bandas diretamente na Tabela de Conteúdos (**TOC**) do ArcMap com **garantia estrita de 100% da resolução nativa** (sem reamostragem ou degradação de qualidade).
 
-Desenvolvido para operações de geoprocessamento da **CGMA / SEMA-MT**.
+Desenvolvido para operações de geoprocessamento e monitoramento ambiental da **CGMA / SEMA-MT**.
 
 ---
 
@@ -53,7 +53,7 @@ Desenvolvido para operações de geoprocessamento da **CGMA / SEMA-MT**.
 ```text
 ┌────────────────────────────────────────────────────────┐
 │                   ArcMap 10.8 (Python 2.7)             │
-│  - Toolbar "GEE Image Selector" (Python Add-In)       │
+│  - Toolbar "CGMA ArcGEE Explorer" (Python Add-In)     │
 │  - ESRI ArcPy Engine (TOC, Data Frames, Simbologia)   │
 │  - Win32 Native Timer IPC Listener (500ms)            │
 └───────────────────────────▲────────────────────────────┘
@@ -204,7 +204,7 @@ CGMA-ARCGIS-GEE-PLUGIN/
 ## 🔄 Como Atualizar ou Desinstalar
 
 ### Atualizar o Plugin:
-- **Pela Interface:** Clique no botão **`[ 🔄 Atualizar ]`** no topo da janela do plugin e escolha atualizar via GitHub ou via arquivo ZIP local.
+- **Pela Interface:** Abra a janela de **Configurações** (⚙) e clique no botão **`[ 🔄 Abrir Assistente de Atualização (GitHub / ZIP) ]`**.
 - **Pelo Prompt/Windows Explorer:** Dê um duplo clique em **`atualizar.bat`**.
 
 ### Desinstalar o Plugin:
