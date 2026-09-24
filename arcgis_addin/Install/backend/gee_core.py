@@ -20,9 +20,9 @@ COLLECTIONS = {
     'L7': 'LANDSAT/LE07/C02/T1_L2',
     'L5': 'LANDSAT/LT05/C02/T1_L2',
     'L4': 'LANDSAT/LT04/C02/T1_L2',
-    'L3': 'LANDSAT/LM03/C01/T1',
-    'L2': 'LANDSAT/LM02/C01/T2',
-    'L1': 'LANDSAT/LM01/C01/T2'
+    'L3': 'LANDSAT/LM03/C02/T1',
+    'L2': 'LANDSAT/LM02/C02/T1',
+    'L1': 'LANDSAT/LM01/C02/T1'
 }
 
 MULTIBAND_DEFAULT_BANDS = {
@@ -58,9 +58,18 @@ def get_image_collection(sensor):
         t1 = ee.ImageCollection('LANDSAT/LT04/C02/T1_L2')
         t2 = ee.ImageCollection('LANDSAT/LT04/C02/T2_L2')
         return t1.merge(t2)
-    elif sensor in ['L1', 'L2', 'L3']:
-        c = COLLECTIONS.get(sensor, 'LANDSAT/LM01/C01/T2')
-        return ee.ImageCollection(c)
+    elif sensor == 'L3':
+        t1 = ee.ImageCollection('LANDSAT/LM03/C02/T1')
+        t2 = ee.ImageCollection('LANDSAT/LM03/C02/T2')
+        return t1.merge(t2)
+    elif sensor == 'L2':
+        t1 = ee.ImageCollection('LANDSAT/LM02/C02/T1')
+        t2 = ee.ImageCollection('LANDSAT/LM02/C02/T2')
+        return t1.merge(t2)
+    elif sensor == 'L1':
+        t1 = ee.ImageCollection('LANDSAT/LM01/C02/T1')
+        t2 = ee.ImageCollection('LANDSAT/LM01/C02/T2')
+        return t1.merge(t2)
     else:
         return ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
 
@@ -127,18 +136,13 @@ COMPOSITIONS = {
         'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'L1': {
-        '321': {'label': 'COR NATURAL - 321', 'bands': ['SR_B3', 'SR_B2', 'SR_B1']},
-        '753': {'label': 'FALSA COR - 753', 'bands': ['SR_B7', 'SR_B5', 'SR_B3']},
-        '432': {'label': 'COR INFRAVERMELHA (VEGETACAO) - 432', 'bands': ['SR_B4', 'SR_B3', 'SR_B2']},
-        '541': {'label': 'AGRICULTURA - 541', 'bands': ['SR_B5', 'SR_B4', 'SR_B1']},
-        '754': {'label': 'PENETRACAO ATMOSFERICA - 754', 'bands': ['SR_B7', 'SR_B5', 'SR_B4']},
-        '451': {'label': 'SAUDE DA VEGETACAO - 451', 'bands': ['SR_B4', 'SR_B5', 'SR_B1']},
-        '453': {'label': 'SOLO/AGUA - 453', 'bands': ['SR_B4', 'SR_B5', 'SR_B3']},
-        '742': {'label': 'NATURAL COM REMOCAO ATMOSFERICA - 742', 'bands': ['SR_B7', 'SR_B4', 'SR_B2']},
-        '743': {'label': 'INFRAVERMELHO ONDA CURTA - 743', 'bands': ['SR_B7', 'SR_B4', 'SR_B3']},
-        '654': {'label': 'ANALISE DA VEGETACAO - 654', 'bands': ['SR_B6', 'SR_B5', 'SR_B4']},
-        'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['B7', 'B5'], 'is_index': True},
-        'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['B4', 'B7'], 'is_index': True},
+        '754': {'label': 'FALSA COR INFRAVERMELHA (PADRAO MSS) - 754', 'bands': ['B7', 'B5', 'B4']},
+        '654': {'label': 'FALSA COR VEGETACAO - 654', 'bands': ['B6', 'B5', 'B4']},
+        '764': {'label': 'PENETRACAO/SOLO - 764', 'bands': ['B7', 'B6', 'B4']},
+        '765': {'label': 'ANALISE DE BIOMASSA - 765', 'bands': ['B7', 'B6', 'B5']},
+        'MB_4': {'label': 'MULTIBANDA - 4 BANDAS MSS (B4, B5, B6, B7)', 'bands': ['B4', 'B5', 'B6', 'B7'], 'multiband': True},
+        'NDVI': {'label': 'INDICE - NDVI (Vegetacao: B7-B5)', 'bands': ['B7', 'B5'], 'is_index': True},
+        'NDWI': {'label': 'INDICE - NDWI (Agua: B4-B7)', 'bands': ['B4', 'B7'], 'is_index': True},
         'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'S2': {

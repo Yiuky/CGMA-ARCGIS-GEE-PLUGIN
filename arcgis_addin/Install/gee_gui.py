@@ -721,15 +721,124 @@ class GEEUpdaterDialog(object):
         except Exception as e:
             messagebox.showerror(u"Erro ao Extrair ZIP", str(e), parent=self.top)
 
+CURRENT_VERSION = "1.4"
+
+SENSOR_METADATA = {
+    'S2': {
+        'name': u'Sentinel-2 (MSI)',
+        'agency': u'ESA / Copernicus',
+        'collection': 'COPERNICUS/S2_SR_HARMONIZED',
+        'period_start': '28/03/2017',
+        'period_end': u'Presente (Ativo)',
+        'period_display': u'28/03/2017 até o Presente (Ativo)',
+        'start_year': 2017,
+        'end_year': None,
+        'res': '10m / 20m',
+        'default_dates': ('30d', None),
+        'notes': u'Refletância de Superfície (Nível 2A Harmonizado), bandas de 10m e 20m.'
+    },
+    'L8': {
+        'name': u'Landsat 8 & 9 (OLI / TIRS)',
+        'agency': u'USGS / NASA',
+        'collection': 'LANDSAT/LC08/C02/T1_L2 (+ LC09)',
+        'period_start': '11/04/2013',
+        'period_end': u'Presente (Ativo)',
+        'period_display': u'11/04/2013 até o Presente (L8: 2013+ | L9: 2021+)',
+        'start_year': 2013,
+        'end_year': None,
+        'res': '30m',
+        'default_dates': ('30d', None),
+        'notes': u'Refletância de Superfície USGS Col. 2 Nível 2 (L8 e L9 unificados).'
+    },
+    'L7': {
+        'name': u'Landsat 7 (ETM+)',
+        'agency': u'USGS / NASA',
+        'collection': 'LANDSAT/LE07/C02/T1_L2',
+        'period_start': '15/04/1999',
+        'period_end': u'Presente (Ativo)',
+        'period_display': u'15/04/1999 até o Presente (SLC-off após 31/05/2003)',
+        'start_year': 1999,
+        'end_year': None,
+        'res': '30m',
+        'default_dates': ('30d', None),
+        'notes': u'Atenção: falha mecânica no corretor de linhas (SLC-off) a partir de 31/05/2003.'
+    },
+    'L5': {
+        'name': u'Landsat 5 (TM)',
+        'agency': u'USGS / NASA',
+        'collection': 'LANDSAT/LT05/C02/T1_L2',
+        'period_start': '01/03/1984',
+        'period_end': '05/05/2012',
+        'period_display': u'01/03/1984 até 05/05/2012 (Missão Concluída)',
+        'start_year': 1984,
+        'end_year': 2012,
+        'res': '30m',
+        'default_dates': ('01/06/2011', '30/09/2011'),
+        'notes': u'Série histórica TM de 28 anos. Calibração geométrica e radiométrica Col. 2.'
+    },
+    'L4': {
+        'name': u'Landsat 4 (TM)',
+        'agency': u'USGS / NASA',
+        'collection': 'LANDSAT/LT04/C02/T1_L2',
+        'period_start': '16/07/1982',
+        'period_end': '14/12/1993',
+        'period_display': u'16/07/1982 até 14/12/1993 (Missão Concluída)',
+        'start_year': 1982,
+        'end_year': 1993,
+        'res': '30m',
+        'default_dates': ('01/06/1990', '30/09/1990'),
+        'notes': u'Série histórica TM preliminar. Disponibilidade intermitente de dados.'
+    },
+    'L3': {
+        'name': u'Landsat 3 (MSS)',
+        'agency': u'USGS / NASA',
+        'collection': 'LANDSAT/LM03/C02/T1 + T2',
+        'period_start': '05/03/1978',
+        'period_end': '31/03/1983',
+        'period_display': u'05/03/1978 até 31/03/1983 (Missão Concluída)',
+        'start_year': 1978,
+        'end_year': 1983,
+        'res': '60m',
+        'default_dates': ('01/06/1980', '30/09/1980'),
+        'notes': u'Sensor MSS (Bandas B4, B5, B6, B7). Resolução espacial nativa de 60m.'
+    },
+    'L2': {
+        'name': u'Landsat 2 (MSS)',
+        'agency': u'USGS / NASA',
+        'collection': 'LANDSAT/LM02/C02/T1 + T2',
+        'period_start': '22/01/1975',
+        'period_end': '25/02/1982',
+        'period_display': u'22/01/1975 até 25/02/1982 (Missão Concluída)',
+        'start_year': 1975,
+        'end_year': 1982,
+        'res': '60m',
+        'default_dates': ('01/06/1977', '30/09/1977'),
+        'notes': u'Sensor MSS (Bandas B4, B5, B6, B7). Resolução espacial nativa de 60m.'
+    },
+    'L1': {
+        'name': u'Landsat 1 (MSS)',
+        'agency': u'USGS / NASA',
+        'collection': 'LANDSAT/LM01/C02/T1 + T2',
+        'period_start': '23/07/1972',
+        'period_end': '06/01/1978',
+        'period_display': u'23/07/1972 até 06/01/1978 (Missão Concluída)',
+        'start_year': 1972,
+        'end_year': 1978,
+        'res': '60m',
+        'default_dates': ('01/06/1975', '30/09/1975'),
+        'notes': u'Primeiro satélite de observação civil da Terra. Sensor MSS 60m.'
+    }
+}
+
 SENSOR_DISPLAY = [
-    ("Sentinel-2 (Harmonized)", "S2"),
-    ("Landsat 8 (Collection 2 - L2)", "L8"),
-    ("Landsat 7 (Collection 2 - L2)", "L7"),
-    ("Landsat 5 (Collection 2 - L2)", "L5"),
-    ("Landsat 4 (Collection 2 - L2)", "L4"),
-    ("Landsat 3 (Collection 1 - MSS)", "L3"),
-    ("Landsat 2 (Collection 1 - MSS)", "L2"),
-    ("Landsat 1 (Collection 1 - MSS)", "L1")
+    (u"Sentinel-2 (MSI - Nível 2A Harmonizado)", "S2"),
+    (u"Landsat 8 & 9 (OLI/TIRS - Col. 2 L2)", "L8"),
+    (u"Landsat 7 (ETM+ - Col. 2 L2)", "L7"),
+    (u"Landsat 5 (TM - Col. 2 L2)", "L5"),
+    (u"Landsat 4 (TM - Col. 2 L2)", "L4"),
+    (u"Landsat 3 (MSS - Col. 2 T1/T2)", "L3"),
+    (u"Landsat 2 (MSS - Col. 2 T1/T2)", "L2"),
+    (u"Landsat 1 (MSS - Col. 2 T1/T2)", "L1")
 ]
 
 MAX_ALLOWED_SCALE = 500000.0
@@ -832,6 +941,115 @@ class GEEPluginWindow(object):
         self.sync_arcmap_context()
         self.async_check_gee()
         self.root.after(2000, self._poll_arcmap_context)
+        self.root.after(2500, self._start_startup_update_check)
+
+    def _start_startup_update_check(self):
+        t = threading.Thread(target=self._async_check_update_on_startup)
+        t.daemon = True
+        t.start()
+
+    def _async_check_update_on_startup(self):
+        """Verifica silenciosamente no GitHub se existe uma nova versão ou commit do projeto."""
+        try:
+            curr = os.path.dirname(os.path.abspath(__file__))
+            p = os.path.abspath(os.path.join(curr, "..", ".."))
+            root_dir = p if os.path.exists(os.path.join(p, "arcgis_addin")) else curr
+        except Exception:
+            root_dir = None
+
+        has_update = False
+        update_info = ""
+
+        # 1. Checagem via commit SHA do GitHub se o repositório Git existir
+        git_dir = os.path.join(root_dir, ".git") if root_dir else None
+        if git_dir and os.path.exists(git_dir):
+            try:
+                import subprocess
+                p = subprocess.Popen(["git", "rev-parse", "HEAD"], cwd=root_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                local_sha, _ = p.communicate()
+                local_sha = local_sha.decode('utf-8', 'ignore').strip()
+            except Exception:
+                local_sha = None
+
+            if local_sha:
+                try:
+                    if sys.version_info[0] < 3:
+                        import urllib2
+                        req = urllib2.Request(
+                            "https://api.github.com/repos/Yiuky/CGMA-ARCGIS-GEE-PLUGIN/commits/main",
+                            headers={'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck'}
+                        )
+                        res = urllib2.urlopen(req, timeout=5)
+                        import json
+                        remote_data = json.loads(res.read())
+                    else:
+                        import urllib.request
+                        import json
+                        req = urllib.request.Request(
+                            "https://api.github.com/repos/Yiuky/CGMA-ARCGIS-GEE-PLUGIN/commits/main",
+                            headers={'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck'}
+                        )
+                        res = urllib.request.urlopen(req, timeout=5)
+                        remote_data = json.loads(res.read().decode('utf-8'))
+
+                    remote_sha = remote_data.get('sha', '').strip()
+                    commit_msg = remote_data.get('commit', {}).get('message', '').splitlines()[0]
+
+                    if remote_sha and local_sha and remote_sha != local_sha:
+                        has_update = True
+                        update_info = u"Novo commit no GitHub: %s (%s...)" % (commit_msg, remote_sha[:7])
+                except Exception:
+                    pass
+
+        # 2. Checagem de versão no config.xml remoto caso commit não tenha apontado ou não use git
+        if not has_update:
+            try:
+                raw_url = "https://raw.githubusercontent.com/Yiuky/CGMA-ARCGIS-GEE-PLUGIN/main/arcgis_addin/config.xml"
+                if sys.version_info[0] < 3:
+                    import urllib2
+                    req = urllib2.Request(raw_url, headers={'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck'})
+                    res = urllib2.urlopen(req, timeout=5)
+                    xml_content = res.read()
+                else:
+                    import urllib.request
+                    req = urllib.request.Request(raw_url, headers={'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck'})
+                    res = urllib.request.urlopen(req, timeout=5)
+                    xml_content = res.read().decode('utf-8')
+
+                import re
+                m = re.search(r'<Version>(.*?)</Version>', xml_content)
+                if m:
+                    remote_ver = m.group(1).strip()
+                    def ver_tuple(v):
+                        return [int(x) for x in re.findall(r'\d+', v)]
+                    if ver_tuple(remote_ver) > ver_tuple(CURRENT_VERSION):
+                        has_update = True
+                        update_info = u"Nova versão v%s disponível (versão atual: v%s)" % (remote_ver, CURRENT_VERSION)
+            except Exception:
+                pass
+
+        if has_update and self._alive:
+            def notify_user():
+                if not self._alive:
+                    return
+                # Mostrar botão de atualização em destaque na barra de topo
+                if hasattr(self, 'btn_update_notify'):
+                    self.btn_update_notify.pack(side=tk.RIGHT, padx=6)
+                if hasattr(self, 'lbl_progress'):
+                    self.lbl_progress.config(
+                        text=u"🚀 Nova atualização disponível no GitHub! Clique no botão superior para atualizar."
+                    )
+                # Notificar o usuário com opção de abrir o atualizador imediatamente
+                resp = messagebox.askyesno(
+                    u"Nova Atualização Disponível",
+                    u"Uma nova atualização do CGMA ArcGEE Explorer foi detectada no repositório oficial!\n\n"
+                    u"%s\n\nDeseja abrir o assistente de atualização agora para aplicar?" % update_info,
+                    parent=self.root
+                )
+                if resp:
+                    self.on_open_updater()
+
+            self.post_to_gui(notify_user)
 
     def _poll_arcmap_context(self):
         """Sincroniza periodicamente com o contexto do ArcMap (escala, camadas)"""
@@ -925,6 +1143,23 @@ class GEEPluginWindow(object):
         self.btn_auth = ttk.Button(self.top_frame, text="Configurar Projeto GEE", command=self.on_configure_project)
         self.btn_auth.pack(side=tk.RIGHT, padx=4)
 
+        # Botão/Badge de Notificação de Nova Atualização (exibido se houver update no GitHub)
+        self.btn_update_notify = tk.Button(
+            self.top_frame,
+            text=u"🚀 Nova Atualização Disponível!",
+            font=("Segoe UI", 9, "bold"),
+            bg="#c0392b",
+            fg="#ffffff",
+            activebackground="#962d22",
+            activeforeground="#ffffff",
+            relief=tk.RAISED,
+            bd=2,
+            padx=8,
+            pady=1,
+            cursor="hand2",
+            command=self.on_open_updater
+        )
+
         # 2. Painel Central Dividido (PanedWindow)
         middle_paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
         middle_paned.pack(fill=tk.BOTH, expand=True, padx=6, pady=4)
@@ -934,30 +1169,56 @@ class GEEPluginWindow(object):
         middle_paned.add(left_frame, weight=1)
 
         # Satelite
-        ttk.Label(left_frame, text="Satelite / Sensor:", font=("Segoe UI", 9, "bold")).grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Label(left_frame, text=u"Satélite / Sensor:", font=("Segoe UI", 9, "bold")).grid(row=0, column=0, sticky=tk.W, pady=2)
         self.var_sensor = tk.StringVar(value="S2")
         self.cbo_sensor = ttk.Combobox(left_frame, textvariable=self.var_sensor, state="readonly", width=34)
         self.cbo_sensor['values'] = [item[0] for item in SENSOR_DISPLAY]
         self.cbo_sensor.current(0)
         self.cbo_sensor.bind("<<ComboboxSelected>>", self.on_sensor_changed)
-        self.cbo_sensor.grid(row=1, column=0, columnspan=2, sticky=tk.EW, pady=(0, 6))
+        self.cbo_sensor.grid(row=1, column=0, columnspan=2, sticky=tk.EW, pady=(0, 4))
+
+        # Quadro Informativo do Sensor Selecionado (Período Operacional, Resolução e Fonte GEE)
+        self.sensor_info_frame = tk.Frame(left_frame, bg="#eaf2f8", bd=1, relief=tk.SOLID, padx=6, pady=4)
+        self.sensor_info_frame.grid(row=2, column=0, columnspan=2, sticky=tk.EW, pady=(0, 6))
+
+        self.lbl_sensor_period = tk.Label(
+            self.sensor_info_frame,
+            text=u"📅 Período: 28/03/2017 até o Presente (Ativo)",
+            font=("Segoe UI", 8, "bold"),
+            bg="#eaf2f8",
+            fg="#1a5276",
+            anchor=tk.W,
+            justify=tk.LEFT
+        )
+        self.lbl_sensor_period.pack(fill=tk.X, anchor=tk.W)
+
+        self.lbl_sensor_detail = tk.Label(
+            self.sensor_info_frame,
+            text=u"📡 GEE: COPERNICUS/S2_SR_HARMONIZED (ESA | 10m / 20m)",
+            font=("Segoe UI", 7),
+            bg="#eaf2f8",
+            fg="#2c3e50",
+            anchor=tk.W,
+            justify=tk.LEFT
+        )
+        self.lbl_sensor_detail.pack(fill=tk.X, anchor=tk.W)
 
         # Composicao de Bandas
-        ttk.Label(left_frame, text="Composicao / Multibanda:", font=("Segoe UI", 9, "bold")).grid(row=2, column=0, sticky=tk.W, pady=2)
+        ttk.Label(left_frame, text="Composicao / Multibanda:", font=("Segoe UI", 9, "bold")).grid(row=3, column=0, sticky=tk.W, pady=2)
         self.var_comp = tk.StringVar()
         self.cbo_comp = ttk.Combobox(left_frame, textvariable=self.var_comp, state="readonly", width=34)
         self.cbo_comp.bind("<<ComboboxSelected>>", self.on_composition_changed)
-        self.cbo_comp.grid(row=3, column=0, columnspan=2, sticky=tk.EW, pady=(0, 4))
+        self.cbo_comp.grid(row=4, column=0, columnspan=2, sticky=tk.EW, pady=(0, 4))
 
         # Bandas personalizadas opcionais (> 3 bandas) ou Formula de Indice
         self.lbl_custom_bands = ttk.Label(left_frame, text=u"Bandas Personalizadas (opcional, ex: B4,B3,B2):", font=("Segoe UI", 8))
-        self.lbl_custom_bands.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 1))
+        self.lbl_custom_bands.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(2, 1))
         self.txt_custom_bands = ttk.Entry(left_frame, width=34)
-        self.txt_custom_bands.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=(0, 4))
+        self.txt_custom_bands.grid(row=6, column=0, columnspan=2, sticky=tk.EW, pady=(0, 4))
 
         # Modo de Carga no ArcMap (Multibanda vs RGB Rapido)
         mode_box = ttk.LabelFrame(left_frame, text=" Modo de Carga no ArcMap ", padding=4)
-        mode_box.grid(row=6, column=0, columnspan=2, sticky=tk.EW, pady=(0, 6))
+        mode_box.grid(row=7, column=0, columnspan=2, sticky=tk.EW, pady=(0, 6))
 
         self.var_load_mode = tk.StringVar(value="multiband")
         rb_multi = ttk.Radiobutton(
@@ -977,7 +1238,7 @@ class GEEPluginWindow(object):
         rb_rgb.pack(anchor=tk.W, pady=1)
 
         # Tamanho do Pixel / Resolucao (metros)
-        ttk.Label(left_frame, text=u"Tamanho do Pixel (m):", font=("Segoe UI", 9, "bold")).grid(row=7, column=0, sticky=tk.W, pady=2)
+        ttk.Label(left_frame, text=u"Tamanho do Pixel (m):", font=("Segoe UI", 9, "bold")).grid(row=8, column=0, sticky=tk.W, pady=2)
         self.var_pixel_size = tk.StringVar(value="10")
         self.cbo_pixel_size = ttk.Combobox(
             left_frame,
@@ -985,24 +1246,24 @@ class GEEPluginWindow(object):
             values=["10", "15", "20", "30", "60", "100"],
             width=15
         )
-        self.cbo_pixel_size.grid(row=7, column=1, sticky=tk.E, pady=2)
+        self.cbo_pixel_size.grid(row=8, column=1, sticky=tk.E, pady=2)
 
         # Intervalo de Datas (Padrao brasileiro DD/MM/AAAA)
-        ttk.Label(left_frame, text="Data Inicial (DD/MM/AAAA):").grid(row=8, column=0, sticky=tk.W, pady=2)
+        ttk.Label(left_frame, text="Data Inicial (DD/MM/AAAA):").grid(row=9, column=0, sticky=tk.W, pady=2)
         self.txt_start_date = ttk.Entry(left_frame, width=15)
         d_end = datetime.date.today()
         d_start = d_end - datetime.timedelta(days=45)
         self.txt_start_date.insert(0, d_start.strftime("%d/%m/%Y"))
-        self.txt_start_date.grid(row=8, column=1, sticky=tk.E, pady=2)
+        self.txt_start_date.grid(row=9, column=1, sticky=tk.E, pady=2)
 
-        ttk.Label(left_frame, text="Data Final (DD/MM/AAAA):").grid(row=9, column=0, sticky=tk.W, pady=2)
+        ttk.Label(left_frame, text="Data Final (DD/MM/AAAA):").grid(row=10, column=0, sticky=tk.W, pady=2)
         self.txt_end_date = ttk.Entry(left_frame, width=15)
         self.txt_end_date.insert(0, d_end.strftime("%d/%m/%Y"))
-        self.txt_end_date.grid(row=9, column=1, sticky=tk.E, pady=2)
+        self.txt_end_date.grid(row=10, column=1, sticky=tk.E, pady=2)
 
         # Atalhos de data
         frame_date_shortcuts = ttk.Frame(left_frame)
-        frame_date_shortcuts.grid(row=10, column=0, columnspan=2, sticky=tk.EW, pady=(3, 8))
+        frame_date_shortcuts.grid(row=11, column=0, columnspan=2, sticky=tk.EW, pady=(3, 8))
 
         btn_d30 = ttk.Button(frame_date_shortcuts, text="30d", width=8, command=lambda: self.set_quick_dates(30))
         btn_d30.pack(side=tk.LEFT, padx=1)
@@ -1012,25 +1273,25 @@ class GEEPluginWindow(object):
         btn_d90.pack(side=tk.LEFT, padx=1)
 
         sep_loc = ttk.Separator(left_frame, orient=tk.HORIZONTAL)
-        sep_loc.grid(row=11, column=0, columnspan=2, sticky=tk.EW, pady=6)
+        sep_loc.grid(row=12, column=0, columnspan=2, sticky=tk.EW, pady=6)
 
         # Filtro Espacial (Apenas Extensao da Tela e Camada Vetorial AOI para garantir 100% de qualidade nativa)
-        ttk.Label(left_frame, text=u"Filtro de Localizacao (Resolução Nativa 100%):", font=("Segoe UI", 9, "bold")).grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=2)
+        ttk.Label(left_frame, text=u"Filtro de Localizacao (Resolução Nativa 100%):", font=("Segoe UI", 9, "bold")).grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=2)
 
         self.var_spatial_type = tk.StringVar(value="extent")
 
         rb_ext = ttk.Radiobutton(left_frame, text=u"Extensao da Tela do ArcMap (<= 1:500k)", variable=self.var_spatial_type, value="extent")
-        rb_ext.grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=2)
+        rb_ext.grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=2)
 
         rb_lyr = ttk.Radiobutton(left_frame, text="Camada Vetorial (AOI):", variable=self.var_spatial_type, value="layer")
-        rb_lyr.grid(row=14, column=0, sticky=tk.W, pady=2)
+        rb_lyr.grid(row=15, column=0, sticky=tk.W, pady=2)
 
         self.cbo_layers = ttk.Combobox(left_frame, state="readonly", width=18)
-        self.cbo_layers.grid(row=14, column=1, sticky=tk.EW, padx=2)
+        self.cbo_layers.grid(row=15, column=1, sticky=tk.EW, padx=2)
 
         # Botao de Busca
         self.btn_search = ttk.Button(left_frame, text="[ Buscar Imagens no GEE ]", style="Primary.TButton", command=self.on_search_clicked)
-        self.btn_search.grid(row=15, column=0, columnspan=2, sticky=tk.EW, pady=12)
+        self.btn_search.grid(row=16, column=0, columnspan=2, sticky=tk.EW, pady=12)
 
         # --- PAINEL DIREITO: TABELA MULTISELECAO E MINIATURA ---
         right_frame = ttk.Frame(middle_paned)
@@ -1207,6 +1468,7 @@ class GEEPluginWindow(object):
             self.cbo_layers['values'] = ["Nenhuma camada encontrada"]
             self.cbo_layers.current(0)
 
+        self.update_sensor_info_display()
         self.update_compositions_list()
         self.update_default_group_name()
         self.refresh_toc_rasters()
@@ -1252,18 +1514,62 @@ class GEEPluginWindow(object):
             return SENSOR_DISPLAY[idx][1]
         return "S2"
 
+    def update_sensor_info_display(self):
+        sensor = self.get_selected_sensor_code()
+        meta = SENSOR_METADATA.get(sensor, {})
+        if meta and hasattr(self, 'lbl_sensor_period') and self.lbl_sensor_period is not None:
+            period_str = meta.get('period_display', '')
+            collection = meta.get('collection', '')
+            agency = meta.get('agency', '')
+            res = meta.get('res', '')
+
+            self.lbl_sensor_period.config(text=u"📅 Período: %s" % period_str)
+            self.lbl_sensor_detail.config(text=u"📡 GEE: %s (%s | %s)" % (collection, agency, res))
+
     def on_sensor_changed(self, event=None):
+        self.update_sensor_info_display()
         self.update_compositions_list()
         self.update_default_group_name()
+
         # Atualizar tamanho do pixel padrao de acordo com a resolucao nativa do satelite
+        s = self.get_selected_sensor_code()
+        meta = SENSOR_METADATA.get(s, {})
         if hasattr(self, 'var_pixel_size'):
-            s = self.get_selected_sensor_code()
             if s == "S2":
                 self.var_pixel_size.set("10")
             elif s in ["L8", "L7", "L5", "L4"]:
                 self.var_pixel_size.set("30")
             elif s in ["L1", "L2", "L3"]:
                 self.var_pixel_size.set("60")
+
+        # Ajuste inteligente de datas caso selecione missao historica concluida
+        end_y = meta.get('end_year')
+        if end_y is not None and hasattr(self, 'txt_end_date') and hasattr(self, 'txt_start_date'):
+            def_start, def_end = meta.get('default_dates', ('01/06/1990', '30/09/1990'))
+            cur_end = self.txt_end_date.get().strip()
+            try:
+                cur_end_y = int(cur_end.split('/')[-1])
+                if cur_end_y > end_y:
+                    self.txt_start_date.delete(0, tk.END)
+                    self.txt_start_date.insert(0, def_start)
+                    self.txt_end_date.delete(0, tk.END)
+                    self.txt_end_date.insert(0, def_end)
+                    if hasattr(self, 'lbl_progress'):
+                        self.lbl_progress.config(
+                            text=u"Período ajustado automaticamente para intervalo operacional do %s (%s a %s)." % (meta.get('name', s), def_start, def_end)
+                        )
+            except Exception:
+                pass
+        else:
+            cur_end = self.txt_end_date.get().strip() if hasattr(self, 'txt_end_date') else ""
+            try:
+                cur_end_y = int(cur_end.split('/')[-1])
+                if s == 'S2' and cur_end_y < 2016:
+                    self.set_quick_dates(45)
+                elif s == 'L8' and cur_end_y < 2013:
+                    self.set_quick_dates(45)
+            except Exception:
+                pass
 
     def update_compositions_list(self):
         sensor = self.get_selected_sensor_code()
