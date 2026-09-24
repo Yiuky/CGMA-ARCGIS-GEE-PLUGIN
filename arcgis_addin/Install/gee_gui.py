@@ -47,17 +47,18 @@ class GEESettingsDialog(object):
     """Janela modal para configuracao de Stretch, Estatisticas (DRA) e Multicore"""
     def __init__(self, parent):
         self.parent = parent
-        self.top = tk.Toplevel(parent)
+        p_win = parent.root if hasattr(parent, 'root') else parent
+        self.top = tk.Toplevel(p_win)
         self.top.title(u"Configurações - GEE ArcGIS Plugin")
-        self.top.geometry("540x630")
+        self.top.geometry("540x670")
         self.top.resizable(False, False)
-        self.top.transient(parent)
+        self.top.transient(p_win)
         self.top.grab_set()
 
         # Centralizar na janela pai
         try:
-            x = parent.winfo_rootx() + (parent.winfo_width() // 2) - 270
-            y = parent.winfo_rooty() + (parent.winfo_height() // 2) - 315
+            x = p_win.winfo_rootx() + (p_win.winfo_width() // 2) - 270
+            y = p_win.winfo_rooty() + (p_win.winfo_height() // 2) - 335
             self.top.geometry("+%d+%d" % (max(0, x), max(0, y)))
         except Exception:
             pass
@@ -189,7 +190,7 @@ class GEESettingsDialog(object):
         grp_aoi.pack(fill=tk.X, pady=(0, 10))
 
         ttk.Label(grp_aoi, text=u"Buffer Adicional (metros):").grid(row=0, column=0, sticky=tk.W, pady=4)
-        init_buffer = float(self.settings.get('aoi_buffer_meters', 0.0))
+        init_buffer = float(self.settings.get('aoi_buffer_meters', 1000.0))
         self.var_aoi_buffer = tk.DoubleVar(value=init_buffer)
         self.spn_aoi_buffer = tk.Spinbox(
             grp_aoi,
@@ -203,7 +204,7 @@ class GEESettingsDialog(object):
 
         lbl_buffer_hint = ttk.Label(
             grp_aoi,
-            text=u"(Padrão: 0m = envelope exato | ex: 500m, 1000m)",
+            text=u"(Padrão: 1000m = 1 km | ex: 0m, 500m, 1000m, 2000m)",
             font=("Segoe UI", 8),
             foreground="#555"
         )
@@ -217,7 +218,25 @@ class GEESettingsDialog(object):
         )
         lbl_aoi_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
 
-        # 5. Barra de Botoes
+        # 5. Grupo Atualização do Plugin
+        grp_update = ttk.LabelFrame(main_pad, text=u" Atualização do Plugin ", padding=10)
+        grp_update.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(
+            grp_update,
+            text=u"Sincronize o plugin com as últimas melhorias via GitHub ou arquivo ZIP local:",
+            font=("Segoe UI", 8),
+            foreground="#333"
+        ).pack(anchor=tk.W, pady=(0, 6))
+
+        btn_open_updater = ttk.Button(
+            grp_update,
+            text=u"🔄 Abrir Assistente de Atualização (GitHub / ZIP)",
+            command=self._open_updater
+        )
+        btn_open_updater.pack(anchor=tk.W)
+
+        # 6. Barra de Botoes
         btn_bar = ttk.Frame(main_pad)
         btn_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(6, 0))
 
@@ -232,6 +251,9 @@ class GEESettingsDialog(object):
 
         self._on_stretch_changed()
         self._on_multi_toggled()
+
+    def _open_updater(self):
+        GEEUpdaterDialog(self.parent)
 
     def _on_stretch_changed(self, event=None):
         st = self.var_stretch.get()
@@ -254,7 +276,7 @@ class GEESettingsDialog(object):
         self.var_stats.set("From Current Display Extent")
         self.var_multicore.set(True)
         self.var_cores.set(min(4, self.max_system_cores))
-        self.var_aoi_buffer.set(0.0)
+        self.var_aoi_buffer.set(1000.0)
         self._on_stretch_changed()
         self._on_multi_toggled()
 
@@ -279,16 +301,17 @@ class GEEAboutDialog(object):
     """Janela modal Sobre com informações institucionais, versão, links e dicas"""
     def __init__(self, parent):
         self.parent = parent
-        self.top = tk.Toplevel(parent)
+        p_win = parent.root if hasattr(parent, 'root') else parent
+        self.top = tk.Toplevel(p_win)
         self.top.title(u"Sobre - CGMA ArcGIS GEE Plugin")
         self.top.geometry("560x490")
         self.top.resizable(False, False)
-        self.top.transient(parent)
+        self.top.transient(p_win)
         self.top.grab_set()
 
         try:
-            x = parent.winfo_rootx() + (parent.winfo_width() // 2) - 280
-            y = parent.winfo_rooty() + (parent.winfo_height() // 2) - 245
+            x = p_win.winfo_rootx() + (p_win.winfo_width() // 2) - 280
+            y = p_win.winfo_rooty() + (p_win.winfo_height() // 2) - 245
             self.top.geometry("+%d+%d" % (max(0, x), max(0, y)))
         except Exception:
             pass
@@ -353,6 +376,15 @@ class GEEAboutDialog(object):
             webbrowser.open("https://github.com/Yiuky/CGMA-ARCGIS-GEE-PLUGIN")
         except Exception:
             pass
+
+def safe_makedirs(path):
+    if not path:
+        return
+    try:
+        os.makedirs(path)
+    except OSError:
+        if not os.path.isdir(path):
+            raise
 
 class GEEUpdaterDialog(object):
     """Janela modal para atualização automática do plugin via GitHub ou arquivo ZIP"""
@@ -490,12 +522,16 @@ class GEEUpdaterDialog(object):
                                 parts = member.filename.split('/', 1)
                                 if len(parts) > 1 and parts[1]:
                                     target_p = os.path.join(root_dir, parts[1])
-                                    if member.is_dir():
-                                        os.makedirs(target_p)
+                                    is_dir = member.filename.endswith('/') or member.filename.endswith('\\')
+                                    if is_dir:
+                                        safe_makedirs(target_p)
                                     else:
-                                        os.makedirs(os.path.dirname(target_p), exist_ok=True)
-                                        with z.open(member) as src, open(target_p, 'wb') as dst:
-                                            dst.write(src.read())
+                                        parent_p = os.path.dirname(target_p)
+                                        if parent_p:
+                                            safe_makedirs(parent_p)
+                                        data = z.read(member.filename)
+                                        with open(target_p, 'wb') as dst:
+                                            dst.write(data)
                         success = True
                         msg = u"Código mais recente baixado e extraído do GitHub com sucesso!"
                     except Exception as ex_dl:
@@ -566,12 +602,16 @@ class GEEUpdaterDialog(object):
                     if not rel_name:
                         continue
                     target_p = os.path.join(root_dir, rel_name)
-                    if member.filename.endswith('/'):
-                        os.makedirs(target_p)
+                    is_dir = member.filename.endswith('/') or member.filename.endswith('\\')
+                    if is_dir:
+                        safe_makedirs(target_p)
                     else:
-                        os.makedirs(os.path.dirname(target_p), exist_ok=True)
-                        with z.open(member) as src, open(target_p, 'wb') as dst:
-                            dst.write(src.read())
+                        parent_p = os.path.dirname(target_p)
+                        if parent_p:
+                            safe_makedirs(parent_p)
+                        data = z.read(member.filename)
+                        with open(target_p, 'wb') as dst:
+                            dst.write(data)
 
             self._redeploy_plugin(root_dir)
             self.lbl_status.config(text=u"Atualização via ZIP concluída com sucesso!")
@@ -768,9 +808,6 @@ class GEEPluginWindow(object):
 
         self.btn_about = ttk.Button(self.top_frame, text=u"ℹ Sobre", command=self.on_open_about)
         self.btn_about.pack(side=tk.RIGHT, padx=4)
-
-        self.btn_update = ttk.Button(self.top_frame, text=u"🔄 Atualizar", command=self.on_open_updater)
-        self.btn_update.pack(side=tk.RIGHT, padx=4)
 
         self.btn_settings = ttk.Button(self.top_frame, text=u"⚙ Configurações", command=self.on_open_settings)
         self.btn_settings.pack(side=tk.RIGHT, padx=4)

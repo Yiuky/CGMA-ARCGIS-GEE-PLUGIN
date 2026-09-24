@@ -391,7 +391,7 @@ def export_layer_to_geojson(layer_name, out_geojson, buffer_meters=None):
 
         if buffer_meters is None:
             settings = load_plugin_settings()
-            buffer_meters = float(settings.get('aoi_buffer_meters', 0.0))
+            buffer_meters = float(settings.get('aoi_buffer_meters', 1000.0))
         else:
             buffer_meters = float(buffer_meters)
 
@@ -577,7 +577,7 @@ def load_plugin_settings():
         'statistics_type': 'From Current Display Extent',
         'multicore_enabled': True,
         'multicore_cores': 4,
-        'aoi_buffer_meters': 0.0
+        'aoi_buffer_meters': 1000.0
     }
     try:
         if os.path.exists(SETTINGS_FILE):
