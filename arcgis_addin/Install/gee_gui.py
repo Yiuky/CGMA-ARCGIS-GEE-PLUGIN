@@ -1002,17 +1002,16 @@ class GEEPluginWindow(object):
                     pass
 
         # 2. Checagem de versão no config.xml remoto caso commit não tenha apontado ou não use git
-        if not has_update:
-            try:
-                raw_url = "https://raw.githubusercontent.com/Yiuky/arcgis-google-earth-engine-explorer/main/arcgis_addin/config.xml"
+                raw_url = "https://raw.githubusercontent.com/Yiuky/arcgis-google-earth-engine-explorer/main/arcgis_addin/config.xml?t=%d" % int(time.time())
+                hdrs = {'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}
                 if sys.version_info[0] < 3:
                     import urllib2
-                    req = urllib2.Request(raw_url, headers={'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck'})
+                    req = urllib2.Request(raw_url, headers=hdrs)
                     res = urllib2.urlopen(req, timeout=5)
                     xml_content = res.read()
                 else:
                     import urllib.request
-                    req = urllib.request.Request(raw_url, headers={'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck'})
+                    req = urllib.request.Request(raw_url, headers=hdrs)
                     res = urllib.request.urlopen(req, timeout=5)
                     xml_content = res.read().decode('utf-8')
 
