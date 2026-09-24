@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary and test artifacts
+*.log
+*.tmp
+*.bak
+arcgis_gee_*.json
+arcgis_gee_*.geojson
+gee_thumb.*
+test_*.py
+create_pure_group.py
+lyr_full.lyr
+
+# Virtual environments
+venv/
+venv_p3/
+.venv/
+env/
+
+# IDE / Editor folders
+.vscode/
+.idea/
+
+# Keep empty_group_template.lyr
+!arcgis_addin/Install/empty_group_template.lyr

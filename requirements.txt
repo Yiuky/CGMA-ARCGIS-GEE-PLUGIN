@@ -1,0 +1,2 @@
+# Dependencias Python 3 para o CGMA ArcGIS GEE Plugin
+earthengine-api>=0.1.350
