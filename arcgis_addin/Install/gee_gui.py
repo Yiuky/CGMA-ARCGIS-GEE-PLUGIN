@@ -56,6 +56,17 @@ def get_icon_path(filename="app_icon.ico"):
             return os.path.abspath(c)
     return None
 
+def get_tk_image(base_name):
+    """Retorna PhotoImage compativel com Tkinter (prioriza .gif para suporte a Tcl/Tk 8.5 no Python 2.7)"""
+    for ext in [".gif", ".png"]:
+        p = get_icon_path(base_name + ext)
+        if p and os.path.exists(p):
+            try:
+                return tk.PhotoImage(file=p)
+            except Exception:
+                pass
+    return None
+
 def setup_window_icon(window):
     """Aplica o ícone oficial da ferramenta na barra de título e barra de tarefas do Windows"""
     ico_p = get_icon_path("app_icon.ico")
@@ -70,11 +81,10 @@ def setup_window_icon(window):
             except Exception:
                 pass
 
-    for fn in ["icon32.png", "icon.png", "icon64.png"]:
-        png_p = get_icon_path(fn)
-        if png_p:
+    for name in ["icon32", "icon24", "icon16", "icon"]:
+        img = get_tk_image(name)
+        if img:
             try:
-                img = tk.PhotoImage(file=png_p)
                 window.iconphoto(True, img)
                 window._icon_photo_ref = img
                 return
@@ -369,15 +379,15 @@ class GEEAboutDialog(object):
         p_win = parent.root if hasattr(parent, 'root') else parent
         self.top = tk.Toplevel(p_win)
         self.top.title(u"Sobre - CGMA ArcGEE Explorer")
-        self.top.geometry("560x500")
+        self.top.geometry("580x525")
         self.top.resizable(False, False)
         setup_window_icon(self.top)
         self.top.transient(p_win)
         self.top.grab_set()
 
         try:
-            x = p_win.winfo_rootx() + (p_win.winfo_width() // 2) - 280
-            y = p_win.winfo_rooty() + (p_win.winfo_height() // 2) - 250
+            x = p_win.winfo_rootx() + (p_win.winfo_width() // 2) - 290
+            y = p_win.winfo_rooty() + (p_win.winfo_height() // 2) - 262
             self.top.geometry("+%d+%d" % (max(0, x), max(0, y)))
         except Exception:
             pass
@@ -386,16 +396,13 @@ class GEEAboutDialog(object):
         pad.pack(fill=tk.BOTH, expand=True)
 
         head_frame = ttk.Frame(pad)
-        head_frame.pack(fill=tk.X, pady=(0, 8))
+        head_frame.pack(fill=tk.X, pady=(0, 10))
 
-        ico_p = get_icon_path("icon64.png") or get_icon_path("icon.png")
-        if ico_p and os.path.exists(ico_p):
-            try:
-                self.about_photo = tk.PhotoImage(file=ico_p)
-                lbl_about_ico = tk.Label(head_frame, image=self.about_photo)
-                lbl_about_ico.pack(side=tk.LEFT, padx=(0, 12))
-            except Exception:
-                pass
+        # Logo em destaque de alta definicao no dialogo Sobre
+        self.about_photo = get_tk_image("about_logo") or get_tk_image("icon64") or get_tk_image("icon")
+        if self.about_photo:
+            lbl_about_ico = ttk.Label(head_frame, image=self.about_photo)
+            lbl_about_ico.pack(side=tk.LEFT, padx=(0, 16))
 
         title_box = ttk.Frame(head_frame)
         title_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -403,10 +410,10 @@ class GEEAboutDialog(object):
         lbl_title = tk.Label(
             title_box,
             text=u"CGMA ArcGEE Explorer",
-            font=("Segoe UI", 14, "bold"),
+            font=("Segoe UI", 16, "bold"),
             fg="#0b5345"
         )
-        lbl_title.pack(anchor=tk.W, pady=(0, 2))
+        lbl_title.pack(anchor=tk.W, pady=(4, 2))
 
         lbl_sub = tk.Label(
             title_box,
@@ -414,7 +421,15 @@ class GEEAboutDialog(object):
             font=("Segoe UI", 9, "italic"),
             fg="#566573"
         )
-        lbl_sub.pack(anchor=tk.W)
+        lbl_sub.pack(anchor=tk.W, pady=(0, 4))
+
+        lbl_tag = tk.Label(
+            title_box,
+            text=u"Sensoriamento Remoto & Observação da Terra com Qualidade Nativa 100%",
+            font=("Segoe UI", 8, "bold"),
+            fg="#1b4f72"
+        )
+        lbl_tag.pack(anchor=tk.W)
 
         sep1 = ttk.Separator(pad, orient=tk.HORIZONTAL)
         sep1.pack(fill=tk.X, pady=(0, 10))
@@ -853,15 +868,11 @@ class GEEPluginWindow(object):
         self.top_frame = tk.Frame(self.root, bg="#fcf3cf", padx=10, pady=6, relief=tk.GROOVE, bd=1)
         self.top_frame.pack(fill=tk.X, side=tk.TOP, padx=6, pady=4)
 
-        # Icone da aplicacao na barra superior
-        ico_top_p = get_icon_path("icon24.png") or get_icon_path("icon32.png") or get_icon_path("icon.png")
-        if ico_top_p and os.path.exists(ico_top_p):
-            try:
-                self.top_icon_img = tk.PhotoImage(file=ico_top_p)
-                lbl_top_ico = tk.Label(self.top_frame, image=self.top_icon_img, bg="#fcf3cf")
-                lbl_top_ico.pack(side=tk.LEFT, padx=(0, 6))
-            except Exception:
-                pass
+        # Icone simples e nitido da aplicacao na barra superior (a esquerda de v1.4)
+        self.top_icon_img = get_tk_image("icon24") or get_tk_image("icon20") or get_tk_image("icon16")
+        if self.top_icon_img:
+            self.lbl_top_ico = tk.Label(self.top_frame, image=self.top_icon_img, bg="#fcf3cf", bd=0)
+            self.lbl_top_ico.pack(side=tk.LEFT, padx=(0, 6))
 
         # Badge de Versao bem visivel
         self.lbl_v_badge = tk.Label(
@@ -904,9 +915,6 @@ class GEEPluginWindow(object):
 
         self.btn_settings = ttk.Button(self.top_frame, text=u"⚙ Configurações", command=self.on_open_settings)
         self.btn_settings.pack(side=tk.RIGHT, padx=4)
-
-        self.btn_guarantee_stretch = ttk.Button(self.top_frame, text=u"⚡ Garantir Stretch (DRA)", command=self.on_apply_stretch_to_toc)
-        self.btn_guarantee_stretch.pack(side=tk.RIGHT, padx=4)
 
         btn_fit_scale = ttk.Button(self.top_frame, text="Ajustar 1:500.000", command=self.on_fit_scale_clicked)
         btn_fit_scale.pack(side=tk.RIGHT, padx=4)
@@ -1309,12 +1317,16 @@ class GEEPluginWindow(object):
                     if resp.get('success'):
                         self.is_authenticated = True
                         self.top_frame.config(bg="#d4efdf")
+                        if hasattr(self, 'lbl_top_ico') and self.lbl_top_ico is not None:
+                            self.lbl_top_ico.config(bg="#d4efdf")
                         self.lbl_status_icon.config(text="[OK]", bg="#d4efdf", fg="#145a32")
                         self.lbl_status.config(text=resp.get('message', 'Conectado ao Google Earth Engine!'), bg="#d4efdf", fg="#145a32")
                         self.btn_auth.config(text="Configurar Projeto GEE")
                     else:
                         self.is_authenticated = False
                         self.top_frame.config(bg="#fadbd8")
+                        if hasattr(self, 'lbl_top_ico') and self.lbl_top_ico is not None:
+                            self.lbl_top_ico.config(bg="#fadbd8")
                         self.lbl_status_icon.config(text="[X]", bg="#fadbd8", fg="#922b21")
                         self.lbl_status.config(text=resp.get('message', 'Nao conectado ao GEE'), bg="#fadbd8", fg="#922b21")
                         self.btn_auth.config(text="Autenticar GEE")
@@ -1724,8 +1736,6 @@ class GEEPluginWindow(object):
         self.lbl_progress.config(text=u"Aplicando e garantindo configurações de stretch %s..." % desc)
         if hasattr(self, 'btn_apply_stretch'):
             self.btn_apply_stretch.config(state=tk.DISABLED)
-        if hasattr(self, 'btn_guarantee_stretch'):
-            self.btn_guarantee_stretch.config(state=tk.DISABLED)
 
         def worker():
             try:
@@ -1748,8 +1758,6 @@ class GEEPluginWindow(object):
                 def reenable():
                     if hasattr(self, 'btn_apply_stretch'):
                         self.btn_apply_stretch.config(state=tk.NORMAL)
-                    if hasattr(self, 'btn_guarantee_stretch'):
-                        self.btn_guarantee_stretch.config(state=tk.NORMAL)
                 self.post_to_gui(reenable)
 
         threading.Thread(target=worker).start()
