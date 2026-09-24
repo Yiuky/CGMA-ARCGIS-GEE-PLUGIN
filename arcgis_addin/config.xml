@@ -17,10 +17,18 @@
       <Toolbars>
         <Toolbar id="gee_selector_addin.toolbar" caption="CGMA ArcGEE Explorer" showInitially="true" autoArrangeButtons="true">
           <Items>
-            <Item refID="gee_selector_addin.btn_open" />
+            <Menu refID="gee_selector_addin.menu_main" />
+            <Button refID="gee_selector_addin.btn_open" />
           </Items>
         </Toolbar>
       </Toolbars>
+      <Menus>
+        <Menu id="gee_selector_addin.menu_main" caption="ArcGEE Explorer" isRootMenu="false">
+          <Items>
+            <Button refID="gee_selector_addin.btn_open" />
+          </Items>
+        </Menu>
+      </Menus>
     </ArcMap>
   </AddIn>
 </ESRI.Configuration>
