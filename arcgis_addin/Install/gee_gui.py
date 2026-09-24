@@ -549,41 +549,65 @@ class GEEUpdaterDialog(object):
 
     def _get_plugin_root(self):
         curr = os.path.dirname(os.path.abspath(__file__))
-        p = os.path.abspath(os.path.join(curr, "..", ".."))
-        if os.path.exists(os.path.join(p, "arcgis_addin")):
-            return p
+        candidates = [
+            os.path.abspath(os.path.join(curr, "..", "..")),
+            r"C:\Users\joberthgambati\.gemini\antigravity\scratch\gee_arcgis_plugin",
+            curr
+        ]
+        for c in candidates:
+            if os.path.exists(os.path.join(c, "arcgis_addin", "makeaddin.py")):
+                return c
         return curr
 
     def _redeploy_plugin(self, root_dir):
+        user_prof = os.environ.get('USERPROFILE', '')
+        addin_dest = os.path.join(user_prof, r"Documents\ArcGIS\AddIns\Desktop10.8\{ceae58c4-c44e-4edd-b8f4-1ba7d13b6b7d}\GEE_Image_Selector.esriaddin")
+        cache_dir = os.path.join(user_prof, r"AppData\Local\ESRI\Desktop10.8\AssemblyCache\{CEAE58C4-C44E-4EDD-B8F4-1BA7D13B6B7D}")
+
+        # 1. Compilar Add-In se makeaddin.py existir
         make_script = os.path.join(root_dir, "arcgis_addin", "makeaddin.py")
         if os.path.exists(make_script):
             import subprocess
             py_exe = sys.executable
-            subprocess.call([py_exe, make_script], cwd=root_dir)
+            try:
+                subprocess.call([py_exe, make_script], cwd=root_dir)
+            except Exception:
+                pass
 
         addin_src = os.path.join(root_dir, "arcgis_addin", "GEE_Image_Selector.esriaddin")
-        user_prof = os.environ.get('USERPROFILE', '')
-        addin_dest = os.path.join(user_prof, r"Documents\ArcGIS\AddIns\Desktop10.8\{ceae58c4-c44e-4edd-b8f4-1ba7d13b6b7d}\GEE_Image_Selector.esriaddin")
-        cache_dir = os.path.join(user_prof, r"AppData\Local\ESRI\Desktop10.8\AssemblyCache\{CEAE58C4-C44E-4EDD-B8F4-1BA7D13B6B7D}")
-        install_src = os.path.join(root_dir, "arcgis_addin", "Install")
-
-        import shutil
         if os.path.exists(addin_src) and os.path.exists(os.path.dirname(addin_dest)):
-            try: shutil.copy2(addin_src, addin_dest)
-            except Exception: pass
+            try:
+                shutil.copy2(addin_src, addin_dest)
+            except Exception:
+                pass
 
-        if os.path.exists(cache_dir) and os.path.exists(install_src):
-            for item in os.listdir(install_src):
-                s = os.path.join(install_src, item)
-                d = os.path.join(cache_dir, item)
-                try:
-                    if os.path.isdir(s):
-                        if os.path.exists(d): shutil.rmtree(d)
-                        shutil.copytree(s, d)
-                    else:
-                        shutil.copy2(s, d)
-                except Exception:
-                    pass
+        # 2. Localizar origem dos arquivos de instalacao (Install)
+        install_src = os.path.join(root_dir, "arcgis_addin", "Install")
+        if not os.path.exists(install_src):
+            cand_inst = os.path.join(root_dir, "Install")
+            if os.path.exists(cand_inst):
+                install_src = cand_inst
+
+        if os.path.exists(cache_dir):
+            # Limpar arquivos compilados .pyc antigos para evitar execucao de bytecode desatualizado
+            for root_w, dirs_w, files_w in os.walk(cache_dir):
+                for f_w in files_w:
+                    if f_w.endswith('.pyc'):
+                        try: os.remove(os.path.join(root_w, f_w))
+                        except Exception: pass
+
+            if os.path.exists(install_src) and os.path.abspath(install_src) != os.path.abspath(cache_dir):
+                for item in os.listdir(install_src):
+                    s = os.path.join(install_src, item)
+                    d = os.path.join(cache_dir, item)
+                    try:
+                        if os.path.isdir(s):
+                            if os.path.exists(d): shutil.rmtree(d)
+                            shutil.copytree(s, d)
+                        else:
+                            shutil.copy2(s, d)
+                    except Exception:
+                        pass
 
     def _do_github_update(self):
         self.lbl_status.config(text=u"Conectando ao GitHub para baixar atualizações...")
@@ -1002,6 +1026,8 @@ class GEEPluginWindow(object):
                     pass
 
         # 2. Checagem de versão no config.xml remoto caso commit não tenha apontado ou não use git
+        if not has_update:
+            try:
                 raw_url = "https://raw.githubusercontent.com/Yiuky/arcgis-google-earth-engine-explorer/main/arcgis_addin/config.xml?t=%d" % int(time.time())
                 hdrs = {'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}
                 if sys.version_info[0] < 3:
