@@ -43,6 +43,44 @@ else:
 
 import gee_bridge
 
+def get_icon_path(filename="app_icon.ico"):
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(curr_dir, filename),
+        os.path.join(curr_dir, "Images", filename),
+        os.path.join(curr_dir, "..", "Images", filename),
+        os.path.join(r"C:\Users\joberthgambati\.gemini\antigravity\scratch\gee_arcgis_plugin\arcgis_addin\Images", filename)
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return os.path.abspath(c)
+    return None
+
+def setup_window_icon(window):
+    """Aplica o ícone oficial da ferramenta na barra de título e barra de tarefas do Windows"""
+    ico_p = get_icon_path("app_icon.ico")
+    if ico_p:
+        try:
+            window.iconbitmap(default=ico_p)
+            return
+        except Exception:
+            try:
+                window.iconbitmap(ico_p)
+                return
+            except Exception:
+                pass
+
+    for fn in ["icon32.png", "icon.png", "icon64.png"]:
+        png_p = get_icon_path(fn)
+        if png_p:
+            try:
+                img = tk.PhotoImage(file=png_p)
+                window.iconphoto(True, img)
+                window._icon_photo_ref = img
+                return
+            except Exception:
+                pass
+
 class GEESettingsDialog(object):
     """Janela modal para configuracao de Stretch, Estatisticas (DRA) e Multicore"""
     def __init__(self, parent):
@@ -50,8 +88,9 @@ class GEESettingsDialog(object):
         p_win = parent.root if hasattr(parent, 'root') else parent
         self.top = tk.Toplevel(p_win)
         self.top.title(u"Configurações - CGMA ArcGEE Explorer")
-        self.top.geometry("540x670")
+        self.top.geometry("540x690")
         self.top.resizable(False, False)
+        setup_window_icon(self.top)
         self.top.transient(p_win)
         self.top.grab_set()
 
@@ -115,6 +154,13 @@ class GEESettingsDialog(object):
         self.spn_std.grid(row=1, column=1, sticky=tk.W, padx=8, pady=4)
         self.lbl_std_hint = ttk.Label(grp_stretch, text=u"(Padrão recomendado: 2.0)", font=("Segoe UI", 8), foreground="#555")
         self.lbl_std_hint.grid(row=1, column=1, sticky=tk.W, padx=(85, 0), pady=4)
+
+        btn_apply_now = ttk.Button(
+            grp_stretch,
+            text=u"⚡ Aplicar e Garantir Stretch Atual nas Camadas do ArcMap",
+            command=self.on_apply_stretch_now
+        )
+        btn_apply_now.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(8, 2))
 
         # 2. Grupo Estatisticas (DRA)
         grp_stats = ttk.LabelFrame(main_pad, text=u" Cálculo de Estatísticas do Raster (DRA) ", padding=10)
@@ -280,6 +326,25 @@ class GEESettingsDialog(object):
         self._on_stretch_changed()
         self._on_multi_toggled()
 
+    def on_apply_stretch_now(self):
+        new_settings = {
+            'stretch_type': self.var_stretch.get(),
+            'stretch_std_param': float(self.var_std_param.get()),
+            'statistics_type': self.var_stats.get(),
+            'multicore_enabled': bool(self.var_multicore.get()),
+            'multicore_cores': int(self.var_cores.get()),
+            'aoi_buffer_meters': float(self.var_aoi_buffer.get())
+        }
+        gee_bridge.save_plugin_settings(new_settings)
+        if hasattr(self.parent, 'settings'):
+            self.parent.settings = new_settings
+
+        rep = gee_bridge.apply_stretch(None, settings=new_settings)
+        if rep.get('success'):
+            messagebox.showinfo(u"Stretch Garantido", rep.get('message', u"Stretch aplicado com sucesso!"), parent=self.top)
+        else:
+            messagebox.showwarning(u"Aviso ArcMap", rep.get('message', u"Não foi possível aplicar nas camadas do TOC."), parent=self.top)
+
     def on_save(self):
         new_settings = {
             'stretch_type': self.var_stretch.get(),
@@ -304,14 +369,15 @@ class GEEAboutDialog(object):
         p_win = parent.root if hasattr(parent, 'root') else parent
         self.top = tk.Toplevel(p_win)
         self.top.title(u"Sobre - CGMA ArcGEE Explorer")
-        self.top.geometry("560x490")
+        self.top.geometry("560x500")
         self.top.resizable(False, False)
+        setup_window_icon(self.top)
         self.top.transient(p_win)
         self.top.grab_set()
 
         try:
             x = p_win.winfo_rootx() + (p_win.winfo_width() // 2) - 280
-            y = p_win.winfo_rooty() + (p_win.winfo_height() // 2) - 245
+            y = p_win.winfo_rooty() + (p_win.winfo_height() // 2) - 250
             self.top.geometry("+%d+%d" % (max(0, x), max(0, y)))
         except Exception:
             pass
@@ -319,8 +385,23 @@ class GEEAboutDialog(object):
         pad = ttk.Frame(self.top, padding=16)
         pad.pack(fill=tk.BOTH, expand=True)
 
+        head_frame = ttk.Frame(pad)
+        head_frame.pack(fill=tk.X, pady=(0, 8))
+
+        ico_p = get_icon_path("icon64.png") or get_icon_path("icon.png")
+        if ico_p and os.path.exists(ico_p):
+            try:
+                self.about_photo = tk.PhotoImage(file=ico_p)
+                lbl_about_ico = tk.Label(head_frame, image=self.about_photo)
+                lbl_about_ico.pack(side=tk.LEFT, padx=(0, 12))
+            except Exception:
+                pass
+
+        title_box = ttk.Frame(head_frame)
+        title_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
         lbl_title = tk.Label(
-            pad,
+            title_box,
             text=u"CGMA ArcGEE Explorer",
             font=("Segoe UI", 14, "bold"),
             fg="#0b5345"
@@ -328,12 +409,12 @@ class GEEAboutDialog(object):
         lbl_title.pack(anchor=tk.W, pady=(0, 2))
 
         lbl_sub = tk.Label(
-            pad,
+            title_box,
             text=u"Google Earth Engine Explorer for ArcGIS Desktop 10.8 (ArcMap)  |  v1.4",
             font=("Segoe UI", 9, "italic"),
             fg="#566573"
         )
-        lbl_sub.pack(anchor=tk.W, pady=(0, 10))
+        lbl_sub.pack(anchor=tk.W)
 
         sep1 = ttk.Separator(pad, orient=tk.HORIZONTAL)
         sep1.pack(fill=tk.X, pady=(0, 10))
@@ -394,6 +475,7 @@ class GEEUpdaterDialog(object):
         self.top.title(u"Atualizar - CGMA ArcGEE Explorer")
         self.top.geometry("540x380")
         self.top.resizable(False, False)
+        setup_window_icon(self.top)
         self.top.transient(parent.root if hasattr(parent, 'root') else parent)
         self.top.grab_set()
 
@@ -658,6 +740,7 @@ class GEEPluginWindow(object):
         self.root.title(u"CGMA ArcGEE Explorer (ArcGIS 10.8)  |  v1.4")
         self.root.geometry("1100x740")
         self.root.minsize(960, 640)
+        setup_window_icon(self.root)
 
         # Interceptar fechamento da janela
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -770,6 +853,16 @@ class GEEPluginWindow(object):
         self.top_frame = tk.Frame(self.root, bg="#fcf3cf", padx=10, pady=6, relief=tk.GROOVE, bd=1)
         self.top_frame.pack(fill=tk.X, side=tk.TOP, padx=6, pady=4)
 
+        # Icone da aplicacao na barra superior
+        ico_top_p = get_icon_path("icon24.png") or get_icon_path("icon32.png") or get_icon_path("icon.png")
+        if ico_top_p and os.path.exists(ico_top_p):
+            try:
+                self.top_icon_img = tk.PhotoImage(file=ico_top_p)
+                lbl_top_ico = tk.Label(self.top_frame, image=self.top_icon_img, bg="#fcf3cf")
+                lbl_top_ico.pack(side=tk.LEFT, padx=(0, 6))
+            except Exception:
+                pass
+
         # Badge de Versao bem visivel
         self.lbl_v_badge = tk.Label(
             self.top_frame,
@@ -811,6 +904,9 @@ class GEEPluginWindow(object):
 
         self.btn_settings = ttk.Button(self.top_frame, text=u"⚙ Configurações", command=self.on_open_settings)
         self.btn_settings.pack(side=tk.RIGHT, padx=4)
+
+        self.btn_guarantee_stretch = ttk.Button(self.top_frame, text=u"⚡ Garantir Stretch (DRA)", command=self.on_apply_stretch_to_toc)
+        self.btn_guarantee_stretch.pack(side=tk.RIGHT, padx=4)
 
         btn_fit_scale = ttk.Button(self.top_frame, text="Ajustar 1:500.000", command=self.on_fit_scale_clicked)
         btn_fit_scale.pack(side=tk.RIGHT, padx=4)
@@ -1020,7 +1116,14 @@ class GEEPluginWindow(object):
             text=u"[ Aplicar Composição ]",
             command=self.on_apply_comp_to_toc_layer
         )
-        self.btn_apply_comp_toc.pack(side=tk.LEFT)
+        self.btn_apply_comp_toc.pack(side=tk.LEFT, padx=(0, 4))
+
+        self.btn_apply_stretch = ttk.Button(
+            replace_frame,
+            text=u"⚡ [ Garantir Stretch ]",
+            command=self.on_apply_stretch_to_toc
+        )
+        self.btn_apply_stretch.pack(side=tk.LEFT)
 
         # Botoes de Acao
         btn_bar = ttk.Frame(info_actions)
@@ -1608,6 +1711,46 @@ class GEEPluginWindow(object):
                 self.post_to_gui(on_err)
             finally:
                 self.post_to_gui(lambda: self.btn_apply_comp_toc.config(state=tk.NORMAL))
+
+        threading.Thread(target=worker).start()
+
+    def on_apply_stretch_to_toc(self):
+        """Garante e aplica as configurações ativas de Stretch e DRA nas camadas raster do ArcMap"""
+        target_layer = self.cbo_toc_rasters.get().strip() if hasattr(self, 'cbo_toc_rasters') else ""
+        if not target_layer or target_layer in ("Nenhuma camada raster no TOC", "Nenhuma camada encontrada"):
+            target_layer = None
+
+        desc = (u"na camada '%s'" % target_layer) if target_layer else u"em todas as camadas raster do TOC"
+        self.lbl_progress.config(text=u"Aplicando e garantindo configurações de stretch %s..." % desc)
+        if hasattr(self, 'btn_apply_stretch'):
+            self.btn_apply_stretch.config(state=tk.DISABLED)
+        if hasattr(self, 'btn_guarantee_stretch'):
+            self.btn_guarantee_stretch.config(state=tk.DISABLED)
+
+        def worker():
+            try:
+                rep = gee_bridge.apply_stretch(target_layer, settings=self.settings)
+                def finish():
+                    if rep.get('success'):
+                        msg = rep.get('message', u'Configurações de stretch garantidas com sucesso!')
+                        self.lbl_progress.config(text=msg)
+                        messagebox.showinfo(u"Stretch Garantido", msg, parent=self.root)
+                    else:
+                        err_m = rep.get('message', u'Falha ao aplicar stretch.')
+                        self.lbl_progress.config(text=u"Aviso: " + err_m[:50])
+                        messagebox.showwarning(u"Aviso ArcMap", err_m, parent=self.root)
+                self.post_to_gui(finish)
+            except Exception as ex:
+                def on_err():
+                    messagebox.showerror(u"Erro", str(ex), parent=self.root)
+                self.post_to_gui(on_err)
+            finally:
+                def reenable():
+                    if hasattr(self, 'btn_apply_stretch'):
+                        self.btn_apply_stretch.config(state=tk.NORMAL)
+                    if hasattr(self, 'btn_guarantee_stretch'):
+                        self.btn_guarantee_stretch.config(state=tk.NORMAL)
+                self.post_to_gui(reenable)
 
         threading.Thread(target=worker).start()
 

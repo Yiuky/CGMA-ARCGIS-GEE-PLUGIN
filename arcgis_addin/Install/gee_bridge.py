@@ -767,25 +767,22 @@ def load_into_toc(tif_path, layer_name=None, group_name=None, zoom=False, comp_c
             desc = arcpy.Describe(tif_path)
             band_count = getattr(desc, 'bandCount', 1)
 
-            # 3. Criar camada com simbologia RGB para 3+ bandas sem descartar nenhuma banda
+            # 3. Criar camada com simbologia RGB ou Stretched e aplicar Stretch/DRA padrao
+            temp_lyr_name = "gee_tmp_" + str(abs(hash(tif_path)))[:6]
+            arcpy.MakeRasterLayer_management(tif_path, temp_lyr_name)
+            tmp_lyr_file = os.path.join(tempfile.gettempdir(), temp_lyr_name + ".lyr")
+            try:
+                if os.path.exists(tmp_lyr_file):
+                    os.remove(tmp_lyr_file)
+            except Exception:
+                pass
+            arcpy.SaveToLayerFile_management(temp_lyr_name, tmp_lyr_file)
             if band_count >= 3:
-                temp_lyr_name = "gee_tmp_" + str(abs(hash(tif_path)))[:6]
-                # CRITICO: Nao filtrar bandas ("1;2;3") para que todas as bandas (4 ou mais) permaneçam acessiveis
-                arcpy.MakeRasterLayer_management(tif_path, temp_lyr_name)
-                tmp_lyr_file = os.path.join(tempfile.gettempdir(), temp_lyr_name + ".lyr")
-                try:
-                    if os.path.exists(tmp_lyr_file):
-                        os.remove(tmp_lyr_file)
-                except Exception:
-                    pass
-                arcpy.SaveToLayerFile_management(temp_lyr_name, tmp_lyr_file)
-                # Resolver indices RGB iniciais baseados na composicao
                 rgb_indices = resolve_rgb_band_indices(sensor, comp_code, custom_bands, band_count)
-                # Aplicar configuracao de Stretch e Statistics personalizada/padrao com bandas RGB iniciais
                 apply_stretch_and_stats(tmp_lyr_file, settings, rgb_bands=rgb_indices)
-                layer_obj = arcpy.mapping.Layer(tmp_lyr_file)
             else:
-                layer_obj = arcpy.mapping.Layer(tif_path)
+                apply_stretch_and_stats(tmp_lyr_file, settings, rgb_bands=None)
+            layer_obj = arcpy.mapping.Layer(tmp_lyr_file)
 
             layer_obj.name = layer_name
             layer_obj.visible = True
@@ -801,6 +798,16 @@ def load_into_toc(tif_path, layer_name=None, group_name=None, zoom=False, comp_c
                 arcpy.mapping.AddLayerToGroup(df, target_grp, layer_obj, "BOTTOM")
             else:
                 arcpy.mapping.AddLayer(df, layer_obj, "TOP")
+
+            # Garantir aplicacao direta do stretch na camada adicionada
+            try:
+                if tmp_lyr_file and os.path.exists(tmp_lyr_file):
+                    for l_chk in arcpy.mapping.ListLayers(mxd, "", df):
+                        if not l_chk.isGroupLayer and l_chk.name == layer_name:
+                            arcpy.mapping.UpdateLayer(df, l_chk, arcpy.mapping.Layer(tmp_lyr_file), True)
+                            break
+            except Exception:
+                pass
 
             # 6. Safety cleanup: Se inserido no grupo, remover qualquer camada que tenha
             # sido criada na raiz (onde longName == name) com o mesmo nome ou dataSource
@@ -895,27 +902,36 @@ def replace_in_toc(tif_path, target_long_name, new_layer_name=None, comp_code=No
             desc = arcpy.Describe(tif_path)
             band_count = getattr(desc, 'bandCount', 1)
 
+            temp_lyr_name = "gee_tmp_rep_" + str(abs(hash(tif_path)))[:6]
+            arcpy.MakeRasterLayer_management(tif_path, temp_lyr_name)
+            tmp_lyr_file = os.path.join(tempfile.gettempdir(), temp_lyr_name + ".lyr")
+            try:
+                if os.path.exists(tmp_lyr_file):
+                    os.remove(tmp_lyr_file)
+            except Exception:
+                pass
+            arcpy.SaveToLayerFile_management(temp_lyr_name, tmp_lyr_file)
             if band_count >= 3:
-                temp_lyr_name = "gee_tmp_rep_" + str(abs(hash(tif_path)))[:6]
-                arcpy.MakeRasterLayer_management(tif_path, temp_lyr_name)
-                tmp_lyr_file = os.path.join(tempfile.gettempdir(), temp_lyr_name + ".lyr")
-                try:
-                    if os.path.exists(tmp_lyr_file):
-                        os.remove(tmp_lyr_file)
-                except Exception:
-                    pass
-                arcpy.SaveToLayerFile_management(temp_lyr_name, tmp_lyr_file)
                 rgb_indices = resolve_rgb_band_indices(sensor, comp_code, custom_bands, band_count)
                 apply_stretch_and_stats(tmp_lyr_file, settings, rgb_bands=rgb_indices)
-                new_obj = arcpy.mapping.Layer(tmp_lyr_file)
             else:
-                new_obj = arcpy.mapping.Layer(tif_path)
+                apply_stretch_and_stats(tmp_lyr_file, settings, rgb_bands=None)
+            new_obj = arcpy.mapping.Layer(tmp_lyr_file)
 
             new_obj.name = new_layer_name
             new_obj.visible = True
 
             arcpy.mapping.InsertLayer(df, target_lyr, new_obj, "BEFORE")
             arcpy.mapping.RemoveLayer(df, target_lyr)
+
+            try:
+                if tmp_lyr_file and os.path.exists(tmp_lyr_file):
+                    for l_chk in arcpy.mapping.ListLayers(mxd, "", df):
+                        if not l_chk.isGroupLayer and l_chk.name == new_layer_name:
+                            arcpy.mapping.UpdateLayer(df, l_chk, arcpy.mapping.Layer(tmp_lyr_file), True)
+                            break
+            except Exception:
+                pass
         finally:
             arcpy.env.addOutputsToMap = prev_add_outputs
             if prev_parallel is not None:
@@ -981,6 +997,59 @@ def change_layer_composition(target_layer_name, composition_code, sensor):
         return True, "Composicao da camada '%s' alterada para '%s' com sucesso!" % (target_layer_name, composition_code)
     except Exception as e:
         return False, "Erro ao alterar composicao: " + str(e)
+
+def apply_stretch_to_toc_layer(target_layer_name=None, settings=None):
+    """Aplica e garante as configuracoes de Stretch (ex: Standard Deviations) e DRA (From Current Display Extent)
+    em uma camada especifica ou em todas as camadas raster do TOC."""
+    if not arcpy:
+        return False, "ArcPy nao disponivel."
+    if not settings:
+        settings = load_plugin_settings()
+    try:
+        mxd = arcpy.mapping.MapDocument("CURRENT")
+        df = arcpy.mapping.ListDataFrames(mxd)[0]
+
+        rasters_to_update = []
+        for lyr in arcpy.mapping.ListLayers(mxd, "", df):
+            if not lyr.isGroupLayer and lyr.isRasterLayer:
+                if not target_layer_name or target_layer_name in ("TODAS", "Todas as camadas", "Nenhuma camada raster no TOC") or lyr.longName == target_layer_name or lyr.name == target_layer_name:
+                    rasters_to_update.append(lyr)
+
+        if not rasters_to_update:
+            return False, u"Nenhuma camada raster compatível encontrada no TOC."
+
+        prev_add = arcpy.env.addOutputsToMap
+        arcpy.env.addOutputsToMap = False
+        updated_count = 0
+        try:
+            for lyr in rasters_to_update:
+                try:
+                    tmp_lyr = os.path.join(tempfile.gettempdir(), "gee_stretch_" + str(abs(hash(lyr.longName)))[:6] + ".lyr")
+                    if os.path.exists(tmp_lyr):
+                        try: os.remove(tmp_lyr)
+                        except Exception: pass
+                    arcpy.SaveToLayerFile_management(lyr, tmp_lyr)
+                    ok = apply_stretch_and_stats(tmp_lyr, settings)
+                    if ok:
+                        src_lyr = arcpy.mapping.Layer(tmp_lyr)
+                        arcpy.mapping.UpdateLayer(df, lyr, src_lyr, True)
+                        updated_count += 1
+                except Exception as ex_item:
+                    print("Erro atualizando stretch da camada %s:" % lyr.name, ex_item)
+        finally:
+            arcpy.env.addOutputsToMap = prev_add
+
+        arcpy.RefreshTOC()
+        arcpy.RefreshActiveView()
+
+        st_name = settings.get('stretch_type', 'Standard Deviations')
+        std_n = settings.get('stretch_std_param', 2.0)
+        stats_type = settings.get('statistics_type', 'From Current Display Extent')
+        return True, u"Stretch garantido em %d camada(s)! [%s (n=%.1f) | DRA: %s]" % (
+            updated_count, st_name, float(std_n), stats_type
+        )
+    except Exception as e:
+        return False, u"Erro ao garantir stretch: " + str(e)
 
 # ==============================================================================
 # PROTOCOLO DE COMUNICACAO INTER-PROCESSOS (IPC) ARCMAP <-> GUI EXTERNA
@@ -1208,6 +1277,12 @@ def process_pending_arcmap_commands():
             elif action == 'refresh_context':
                 ctx = export_arcmap_context()
                 resp = {'reply_to': cmd_id, 'success': True, 'context': ctx}
+            elif action == 'apply_stretch':
+                ok, msg = apply_stretch_to_toc_layer(
+                    cmd.get('layer_name'),
+                    settings=cmd.get('settings')
+                )
+                resp = {'reply_to': cmd_id, 'success': ok, 'message': msg}
         except Exception as ex:
             import traceback
             resp = {'reply_to': cmd_id, 'success': False, 'message': unicode(ex) + u"\n" + unicode(traceback.format_exc())}
@@ -1266,6 +1341,14 @@ def send_arcmap_command(action_dict, timeout=120):
         pass
 
     return {'success': False, 'message': u'Tempo limite esgotado (%ds) aguardando resposta do ArcMap.' % timeout}
+
+def apply_stretch(layer_name=None, settings=None):
+    """Envia comando para o ArcMap aplicar/garantir o Stretch configurado na camada ou no mapa"""
+    return send_arcmap_command({
+        'action': 'apply_stretch',
+        'layer_name': layer_name,
+        'settings': settings
+    })
 
 def launch_gui_process():
     """Inicia a interface grafica como processo independente pythonw.exe sem travar o ArcMap"""
