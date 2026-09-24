@@ -1,12 +1,12 @@
-# CGMA ArcGIS GEE Plugin (v1.2)
+# CGMA ArcGIS GEE Plugin (v1.3)
 
 [![ArcGIS](https://img.shields.io/badge/ArcGIS%20Desktop-10.8%20%7C%2010.8.2-blue.svg)](https://www.esri.com/)
 [![Google Earth Engine](https://img.shields.io/badge/Google%20Earth%20Engine-API-green.svg)](https://earthengine.google.com/)
 [![Python](https://img.shields.io/badge/Python-2.7%20%7C%203.9+-yellow.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Versão-v1.2%20Estável-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/Versão-v1.3%20Estável-brightgreen.svg)]()
 
-Plugin avançado para o **ArcGIS Desktop 10.8 / 10.8.2 (ArcMap)** que integra diretamente a infraestrutura do **Google Earth Engine (GEE)** ao ambiente SIG da Esri. Permite pesquisar, filtrar, pré-visualizar e descarregar imagens de satélite (**Sentinel-2** e **Landsats 1 a 8**) diretamente na Tabela de Conteúdos (**TOC**) do ArcMap, preservando todas as bandas espectrais brutas ou aplicando composições RGB sob medida.
+Plugin avançado para o **ArcGIS Desktop 10.8 / 10.8.2 (ArcMap)** que integra diretamente a infraestrutura do **Google Earth Engine (GEE)** ao ambiente SIG da Esri. Permite pesquisar, filtrar, pré-visualizar e descarregar imagens de satélite (**Sentinel-2** e **Landsats 1 a 8**), índices espectrais e matemática de bandas diretamente na Tabela de Conteúdos (**TOC**) do ArcMap, preservando todas as bandas espectrais brutas ou aplicando composições sob medida.
 
 Desenvolvido para operações de geoprocessamento da **CGMA / SEMA-MT**.
 
@@ -17,12 +17,13 @@ Desenvolvido para operações de geoprocessamento da **CGMA / SEMA-MT**.
 * **⚡ Arquitetura Assíncrona e Desacoplada (IPC Seguro):**
   * A interface gráfica opera em processo próprio (`pythonw.exe`), comunicando-se com o ArcMap via IPC estruturado (JSON com trava de reentrância atômica).
   * **Zero risco de travamento ou congelamento da UI do ArcMap** durante buscas ou downloads pesados.
-* **🛰️ Suporte Amplo a Sensores e Coleções:**
-  * **Sentinel-2** Harmonized Surface Reflectance (`COPERNICUS/S2_SR_HARMONIZED`).
-  * **Landsat 8** OLI/TIRS Surface Reflectance (`LANDSAT/LC08/C02/T1_L2`).
-  * **Landsat 7** ETM+ Surface Reflectance (`LANDSAT/LE07/C02/T1_L2`).
-  * **Landsat 5** TM Surface Reflectance (`LANDSAT/LT05/C02/T1_L2`).
-  * **Landsats 4, 3, 2 e 1** (Coleções Históricas e MSS).
+* **🌱 Índices Espectrais e Matemática de Bandas Integrada (Novidade v1.3):**
+  * Cálculo em tempo real diretamente no Earth Engine de índices como **NDVI**, **NDWI**, **NDMI**, **NBR (Queimadas)**, **EVI** e **SAVI**.
+  * **Fórmula Personalizada (Band Math):** Permite inserir expressões matemáticas customizadas (ex: `(B8-B4)/(B8+B4)` ou `(SR_B5-SR_B4)/(SR_B5+SR_B4)`), descarregando rasters Float32 monocamada com paleta de cores automática na miniatura e estatísticas calculadas no ArcMap.
+* **📅 Entrada Flexível de Datas (Padrão Brasileiro DD/MM/AAAA):**
+  * Campo de busca com suporte nativo a `DD/MM/AAAA` (ex: `15/08/2024`) bem como formato ISO `AAAA-MM-DD`.
+* **🛰️ Busca e Carga Orbital Completa (Órbita/Ponto e Tile MGRS):**
+  * Pesquisa por **Órbita/Ponto** (Landsat WRS Path/Row) ou **Tile MGRS** (Sentinel-2) com download íntegro da cena/tile completa (sem recortar pela extensão da tela do mapa) e **auto-zoom** automático para a área ao ser adicionada no TOC.
 * **🌈 Suporte Multibanda Completo (Preservação de Todas as Bandas):**
   * Baixa todas as bandas espectrais nativas (ex: 10 bandas no Sentinel-2, 7 bandas no Landsat 8/7/5) em um único arquivo GeoTIFF 32/16-bit.
   * Permite **alterar as bandas RGB diretamente no ArcMap TOC** em tempo real sem precisar refazer download.

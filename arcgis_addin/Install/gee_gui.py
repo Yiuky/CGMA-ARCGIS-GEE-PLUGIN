@@ -267,7 +267,7 @@ def normalize_date(d_str):
 class GEEPluginWindow(object):
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title(u"Google Earth Engine - Seletor Multibanda & Miniaturas (ArcGIS 10.8)  |  v1.2")
+        self.root.title(u"Google Earth Engine - Seletor Multibanda & Índices (ArcGIS 10.8)  |  v1.3")
         self.root.geometry("1100x740")
         self.root.minsize(960, 640)
 
@@ -384,7 +384,7 @@ class GEEPluginWindow(object):
         # Badge de Versao bem visivel
         self.lbl_v_badge = tk.Label(
             self.top_frame,
-            text=u" v1.2 ",
+            text=u" v1.3 ",
             font=("Segoe UI", 9, "bold"),
             bg="#1b4f72",
             fg="#ffffff",
@@ -453,8 +453,9 @@ class GEEPluginWindow(object):
         self.cbo_comp.bind("<<ComboboxSelected>>", self.on_composition_changed)
         self.cbo_comp.grid(row=3, column=0, columnspan=2, sticky=tk.EW, pady=(0, 4))
 
-        # Bandas personalizadas opcionais (> 3 bandas)
-        ttk.Label(left_frame, text="Bandas Personalizadas (opcional, separadas por virgula):", font=("Segoe UI", 8)).grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 1))
+        # Bandas personalizadas opcionais (> 3 bandas) ou Formula de Indice
+        self.lbl_custom_bands = ttk.Label(left_frame, text=u"Bandas Personalizadas (opcional, ex: B4,B3,B2):", font=("Segoe UI", 8))
+        self.lbl_custom_bands.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(2, 1))
         self.txt_custom_bands = ttk.Entry(left_frame, width=34)
         self.txt_custom_bands.grid(row=5, column=0, columnspan=2, sticky=tk.EW, pady=(0, 4))
 
@@ -490,17 +491,17 @@ class GEEPluginWindow(object):
         )
         self.cbo_pixel_size.grid(row=7, column=1, sticky=tk.E, pady=2)
 
-        # Intervalo de Datas
-        ttk.Label(left_frame, text="Data Inicial (AAAA-MM-DD):").grid(row=8, column=0, sticky=tk.W, pady=2)
+        # Intervalo de Datas (Padrao brasileiro DD/MM/AAAA)
+        ttk.Label(left_frame, text="Data Inicial (DD/MM/AAAA):").grid(row=8, column=0, sticky=tk.W, pady=2)
         self.txt_start_date = ttk.Entry(left_frame, width=15)
         d_end = datetime.date.today()
         d_start = d_end - datetime.timedelta(days=45)
-        self.txt_start_date.insert(0, d_start.strftime("%Y-%m-%d"))
+        self.txt_start_date.insert(0, d_start.strftime("%d/%m/%Y"))
         self.txt_start_date.grid(row=8, column=1, sticky=tk.E, pady=2)
 
-        ttk.Label(left_frame, text="Data Final (AAAA-MM-DD):").grid(row=9, column=0, sticky=tk.W, pady=2)
+        ttk.Label(left_frame, text="Data Final (DD/MM/AAAA):").grid(row=9, column=0, sticky=tk.W, pady=2)
         self.txt_end_date = ttk.Entry(left_frame, width=15)
-        self.txt_end_date.insert(0, d_end.strftime("%Y-%m-%d"))
+        self.txt_end_date.insert(0, d_end.strftime("%d/%m/%Y"))
         self.txt_end_date.grid(row=9, column=1, sticky=tk.E, pady=2)
 
         # Atalhos de data
@@ -549,12 +550,9 @@ class GEEPluginWindow(object):
         self.txt_mgrs = ttk.Entry(left_frame, width=16)
         self.txt_mgrs.grid(row=16, column=1, sticky=tk.E)
 
-        rb_mt = ttk.Radiobutton(left_frame, text="Mato Grosso (MT)", variable=self.var_spatial_type, value="mt")
-        rb_mt.grid(row=17, column=0, columnspan=2, sticky=tk.W, pady=2)
-
         # Botao de Busca
         self.btn_search = ttk.Button(left_frame, text="[ Buscar Imagens no GEE ]", style="Primary.TButton", command=self.on_search_clicked)
-        self.btn_search.grid(row=18, column=0, columnspan=2, sticky=tk.EW, pady=12)
+        self.btn_search.grid(row=17, column=0, columnspan=2, sticky=tk.EW, pady=12)
 
         # --- PAINEL DIREITO: TABELA MULTISELECAO E MINIATURA ---
         right_frame = ttk.Frame(middle_paned)
@@ -676,7 +674,7 @@ class GEEPluginWindow(object):
         self.btn_mosaic_toc.pack(side=tk.LEFT)
 
         # 3. Barra de Status Inferior com Progresso
-        self.lbl_progress = ttk.Label(self.root, text="Pronto. (v0.9 - Grupo Comum & Edição de Bandas Ativa)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
+        self.lbl_progress = ttk.Label(self.root, text=u"Pronto. (v1.3 - Índices Espectrais, DD/MM/AAAA & Busca Orbital)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
         self.lbl_progress.pack(fill=tk.X, side=tk.BOTTOM)
 
     def update_map_scale_display(self):
@@ -709,9 +707,9 @@ class GEEPluginWindow(object):
         d_end = datetime.date.today()
         d_start = d_end - datetime.timedelta(days=days)
         self.txt_start_date.delete(0, tk.END)
-        self.txt_start_date.insert(0, d_start.strftime("%Y-%m-%d"))
+        self.txt_start_date.insert(0, d_start.strftime("%d/%m/%Y"))
         self.txt_end_date.delete(0, tk.END)
-        self.txt_end_date.insert(0, d_end.strftime("%Y-%m-%d"))
+        self.txt_end_date.insert(0, d_end.strftime("%d/%m/%Y"))
 
     def populate_initial_data(self):
         ctx = gee_bridge.read_arcmap_context() or {}
@@ -799,6 +797,22 @@ class GEEPluginWindow(object):
 
     def on_composition_changed(self, event=None):
         self.update_default_group_name()
+        comp = self.get_selected_composition_code()
+        sensor = self.get_selected_sensor_code()
+
+        if hasattr(self, 'lbl_custom_bands'):
+            if comp == 'CUSTOM_MATH':
+                self.lbl_custom_bands.config(text=u"Fórmula Matemática (ex: (B8-B4)/(B8+B4) ou (SR_B5-SR_B4)/(SR_B5+SR_B4)):")
+                curr = self.txt_custom_bands.get().strip()
+                if not curr or curr in ['B4,B3,B2', 'SR_B4,SR_B3,SR_B2']:
+                    def_formula = "(B8-B4)/(B8+B4)" if sensor == "S2" else "(SR_B5-SR_B4)/(SR_B5+SR_B4)"
+                    self.txt_custom_bands.delete(0, tk.END)
+                    self.txt_custom_bands.insert(0, def_formula)
+            elif comp in ['NDVI', 'NDWI', 'NDMI', 'NBR', 'EVI', 'SAVI']:
+                self.lbl_custom_bands.config(text=u"Índice Espectral (cálculo e paleta automáticos no GEE):")
+            else:
+                self.lbl_custom_bands.config(text=u"Bandas Personalizadas (opcional, separadas por vírgula):")
+
         # Nao carregar miniatura automaticamente; apenas sob demanda via clique no botao
         if self.get_selected_image_id():
             self.lbl_thumb.config(
@@ -922,8 +936,6 @@ class GEEPluginWindow(object):
             row = self.txt_row.get().strip()
         elif st == "mgrs":
             mgrs = self.txt_mgrs.get().strip()
-        elif st == "mt":
-            bbox = [-61.64, -18.04, -50.22, -7.35]
 
         sensor = self.get_selected_sensor_code()
         s_date = normalize_date(self.txt_start_date.get())
@@ -1095,7 +1107,26 @@ class GEEPluginWindow(object):
             messagebox.showinfo("Aviso", "Nenhuma miniatura ativa no momento. Selecione uma imagem primeiro.", parent=self.root)
 
     def validate_scale_and_get_bbox(self):
-        """Valida se a escala do ArcMap esta dentro de 1:500.000"""
+        """Valida se a escala do ArcMap esta dentro de 1:500.000 para busca por extensao.
+        Retorna (ok, bbox, auto_zoom):
+        - Para Orbita/Ponto ou Tile MGRS: nao limita escala, bbox=None (cena completa) e auto_zoom=True.
+        - Para Camada (AOI): exporta geojson, bbox=None e auto_zoom=True.
+        - Para Extensao da Tela: valida escala <= 1:500k, bbox da tela e auto_zoom=False.
+        """
+        st = self.var_spatial_type.get()
+
+        if st in ["path_row", "mgrs"]:
+            return True, None, True
+
+        if st == "layer":
+            lyr_name = self.cbo_layers.get()
+            if lyr_name and lyr_name != "Nenhuma camada encontrada":
+                rep = gee_bridge.send_arcmap_command({'action': 'export_aoi', 'layer_name': lyr_name}, timeout=10)
+                if rep.get('success'):
+                    self.current_aoi_file = rep.get('file')
+            return True, None, True
+
+        # st == "extent"
         self.sync_arcmap_context()
         scale = self.arcmap_context.get('scale')
 
@@ -1108,32 +1139,18 @@ class GEEPluginWindow(object):
                 gee_bridge.send_arcmap_command({'action': 'set_scale', 'scale': MAX_ALLOWED_SCALE})
                 self.sync_arcmap_context()
             else:
-                return None
+                return False, None, False
 
-        # Obter extensao da tela
-        st = self.var_spatial_type.get()
         bbox = self.arcmap_context.get('bbox')
-
-        if st == "extent":
-            if not bbox:
-                rep = gee_bridge.send_arcmap_command({'action': 'refresh_context'}, timeout=5)
-                if rep.get('success') and rep.get('context'):
-                    self.arcmap_context = rep['context']
-                    bbox = self.arcmap_context.get('bbox')
-            if not bbox:
-                bbox = [-61.64, -18.04, -50.22, -7.35]
-        elif st == "mt":
+        if not bbox:
+            rep = gee_bridge.send_arcmap_command({'action': 'refresh_context'}, timeout=5)
+            if rep.get('success') and rep.get('context'):
+                self.arcmap_context = rep['context']
+                bbox = self.arcmap_context.get('bbox')
+        if not bbox:
             bbox = [-61.64, -18.04, -50.22, -7.35]
-        elif st == "layer":
-            lyr_name = self.cbo_layers.get()
-            if lyr_name and lyr_name != "Nenhuma camada encontrada":
-                rep = gee_bridge.send_arcmap_command({'action': 'export_aoi', 'layer_name': lyr_name}, timeout=10)
-                if rep.get('success'):
-                    self.current_aoi_file = rep.get('file')
-            if not bbox:
-                bbox = [-61.64, -18.04, -50.22, -7.35]
 
-        return bbox
+        return True, bbox, False
 
     def on_load_selected_background(self):
         """Carrega todas as imagens selecionadas no ArcMap em segundo plano"""
@@ -1142,11 +1159,11 @@ class GEEPluginWindow(object):
             messagebox.showwarning("Aviso", "Selecione pelo menos uma imagem na tabela.", parent=self.root)
             return
 
-        bbox = self.validate_scale_and_get_bbox()
-        if bbox is None:
+        ok, bbox, auto_zoom = self.validate_scale_and_get_bbox()
+        if not ok:
             return
 
-        self._start_background_download(ids, is_mosaic=False, bbox=bbox)
+        self._start_background_download(ids, is_mosaic=False, bbox=bbox, auto_zoom=auto_zoom)
 
     def on_load_mosaic_background(self):
         """Cria e carrega mosaico das imagens selecionadas em segundo plano"""
@@ -1155,11 +1172,11 @@ class GEEPluginWindow(object):
             messagebox.showwarning("Aviso", "Selecione pelo menos uma imagem na tabela para o mosaico.", parent=self.root)
             return
 
-        bbox = self.validate_scale_and_get_bbox()
-        if bbox is None:
+        ok, bbox, auto_zoom = self.validate_scale_and_get_bbox()
+        if not ok:
             return
 
-        self._start_background_download(ids, is_mosaic=True, bbox=bbox)
+        self._start_background_download(ids, is_mosaic=True, bbox=bbox, auto_zoom=auto_zoom)
 
     def on_replace_selected_background(self):
         """Substitui uma camada selecionada no TOC pela imagem atual do GEE"""
@@ -1173,11 +1190,11 @@ class GEEPluginWindow(object):
             messagebox.showwarning("Aviso", "Selecione qual camada do TOC voce deseja substituir na lista ao lado.", parent=self.root)
             return
 
-        bbox = self.validate_scale_and_get_bbox()
-        if bbox is None:
+        ok, bbox, auto_zoom = self.validate_scale_and_get_bbox()
+        if not ok:
             return
 
-        self._start_background_download(ids[:1], is_mosaic=False, bbox=bbox, replace_target=target_layer)
+        self._start_background_download(ids[:1], is_mosaic=False, bbox=bbox, replace_target=target_layer, auto_zoom=auto_zoom)
 
     def on_apply_comp_to_toc_layer(self):
         """Aplica a composicao de bandas selecionada na combobox diretamente na camada selecionada no TOC"""
@@ -1220,7 +1237,7 @@ class GEEPluginWindow(object):
 
         threading.Thread(target=worker).start()
 
-    def _start_background_download(self, image_ids, is_mosaic, bbox, replace_target=None):
+    def _start_background_download(self, image_ids, is_mosaic, bbox, replace_target=None, auto_zoom=False):
         if self.is_downloading:
             messagebox.showwarning("Em Andamento", "Ja existe um carregamento em segundo plano em execucao.", parent=self.root)
             return
@@ -1334,6 +1351,7 @@ class GEEPluginWindow(object):
                             'file': tif_file,
                             'name': layer_title,
                             'group': group_name,
+                            'zoom': auto_zoom,
                             'comp': comp,
                             'sensor': sensor,
                             'custom_bands': custom_bands
@@ -1388,6 +1406,7 @@ class GEEPluginWindow(object):
                                         'file': tif_file,
                                         'name': layer_title,
                                         'group': group_name,
+                                        'zoom': auto_zoom if (idx == 0) else False,
                                         'comp': comp,
                                         'sensor': sensor,
                                         'custom_bands': custom_bands
@@ -1448,6 +1467,7 @@ class GEEPluginWindow(object):
                                     'file': tif_file,
                                     'name': layer_title,
                                     'group': group_name,
+                                    'zoom': auto_zoom if (idx == 0) else False,
                                     'comp': comp,
                                     'sensor': sensor,
                                     'custom_bands': custom_bands

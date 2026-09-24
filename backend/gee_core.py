@@ -9,6 +9,7 @@ import os
 import sys
 import json
 import urllib.request
+import tempfile
 import ee
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gee_config.json")
@@ -76,7 +77,14 @@ COMPOSITIONS = {
         '754': {'label': 'INFRAVERMELHO ONDA CURTA - 754', 'bands': ['SR_B7', 'SR_B5', 'SR_B4']},
         '654': {'label': 'ANALISE DA VEGETACAO - 654', 'bands': ['SR_B6', 'SR_B5', 'SR_B4']},
         'MB_7': {'label': 'MULTIBANDA - 7 BANDAS (SR_B1 a SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True},
-        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B2 a SR_B7)', 'bands': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True}
+        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B2 a SR_B7)', 'bands': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True},
+        'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['SR_B5', 'SR_B4'], 'is_index': True},
+        'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['SR_B3', 'SR_B5'], 'is_index': True},
+        'NDMI': {'label': 'INDICE - NDMI (Umidade: NIR-SWIR1)', 'bands': ['SR_B5', 'SR_B6'], 'is_index': True},
+        'NBR':  {'label': 'INDICE - NBR (Queimadas: NIR-SWIR2)', 'bands': ['SR_B5', 'SR_B7'], 'is_index': True},
+        'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['SR_B5', 'SR_B4', 'SR_B2'], 'is_index': True},
+        'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['SR_B5', 'SR_B4'], 'is_index': True},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'L7': {
         '321': {'label': 'COR NATURAL - 321', 'bands': ['SR_B3', 'SR_B2', 'SR_B1']},
@@ -89,7 +97,14 @@ COMPOSITIONS = {
         '742': {'label': 'NATURAL COM REMOCAO ATMOSFERICA - 742', 'bands': ['SR_B7', 'SR_B4', 'SR_B2']},
         '743': {'label': 'INFRAVERMELHO ONDA CURTA - 743', 'bands': ['SR_B7', 'SR_B4', 'SR_B3']},
         '543': {'label': 'ANALISE DA VEGETACAO - 543', 'bands': ['SR_B5', 'SR_B4', 'SR_B3']},
-        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True}
+        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True},
+        'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
+        'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['SR_B2', 'SR_B4'], 'is_index': True},
+        'NDMI': {'label': 'INDICE - NDMI (Umidade: NIR-SWIR1)', 'bands': ['SR_B4', 'SR_B5'], 'is_index': True},
+        'NBR':  {'label': 'INDICE - NBR (Queimadas: NIR-SWIR2)', 'bands': ['SR_B4', 'SR_B7'], 'is_index': True},
+        'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['SR_B4', 'SR_B3', 'SR_B1'], 'is_index': True},
+        'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'L5': {
         '321': {'label': 'COR NATURAL - 321', 'bands': ['SR_B3', 'SR_B2', 'SR_B1']},
@@ -102,7 +117,14 @@ COMPOSITIONS = {
         '742': {'label': 'NATURAL COM REMOCAO ATMOSFERICA - 742', 'bands': ['SR_B7', 'SR_B4', 'SR_B2']},
         '743': {'label': 'INFRAVERMELHO ONDA CURTA - 743', 'bands': ['SR_B7', 'SR_B4', 'SR_B3']},
         '543': {'label': 'ANALISE DA VEGETACAO - 543', 'bands': ['SR_B5', 'SR_B4', 'SR_B3']},
-        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True}
+        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True},
+        'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
+        'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['SR_B2', 'SR_B4'], 'is_index': True},
+        'NDMI': {'label': 'INDICE - NDMI (Umidade: NIR-SWIR1)', 'bands': ['SR_B4', 'SR_B5'], 'is_index': True},
+        'NBR':  {'label': 'INDICE - NBR (Queimadas: NIR-SWIR2)', 'bands': ['SR_B4', 'SR_B7'], 'is_index': True},
+        'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['SR_B4', 'SR_B3', 'SR_B1'], 'is_index': True},
+        'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'L1': {
         '321': {'label': 'COR NATURAL - 321', 'bands': ['SR_B3', 'SR_B2', 'SR_B1']},
@@ -114,7 +136,10 @@ COMPOSITIONS = {
         '453': {'label': 'SOLO/AGUA - 453', 'bands': ['SR_B4', 'SR_B5', 'SR_B3']},
         '742': {'label': 'NATURAL COM REMOCAO ATMOSFERICA - 742', 'bands': ['SR_B7', 'SR_B4', 'SR_B2']},
         '743': {'label': 'INFRAVERMELHO ONDA CURTA - 743', 'bands': ['SR_B7', 'SR_B4', 'SR_B3']},
-        '654': {'label': 'ANALISE DA VEGETACAO - 654', 'bands': ['SR_B6', 'SR_B5', 'SR_B4']}
+        '654': {'label': 'ANALISE DA VEGETACAO - 654', 'bands': ['SR_B6', 'SR_B5', 'SR_B4']},
+        'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['B7', 'B5'], 'is_index': True},
+        'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['B4', 'B7'], 'is_index': True},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'S2': {
         '432': {'label': 'COR NATURAL - 4.3.2', 'bands': ['B4', 'B3', 'B2']},
@@ -138,7 +163,14 @@ COMPOSITIONS = {
         '483': {'label': 'ANALISE DA VEGETACAO - 4.8.3', 'bands': ['B4', 'B8', 'B3']},
         'MB_10': {'label': 'MULTIBANDA - 10 BANDAS PRINCIPAIS (B2 a B12)', 'bands': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12'], 'multiband': True},
         'MB_6': {'label': 'MULTIBANDA - 6 BANDAS VNIR/SWIR (B2, B3, B4, B8, B11, B12)', 'bands': ['B2', 'B3', 'B4', 'B8', 'B11', 'B12'], 'multiband': True},
-        'MB_12': {'label': 'MULTIBANDA - 12 BANDAS COMPLETAS (B1 a B12)', 'bands': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12'], 'multiband': True}
+        'MB_12': {'label': 'MULTIBANDA - 12 BANDAS COMPLETAS (B1 a B12)', 'bands': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12'], 'multiband': True},
+        'NDVI': {'label': 'INDICE - NDVI (Vegetacao: B8-B4)', 'bands': ['B8', 'B4'], 'is_index': True},
+        'NDWI': {'label': 'INDICE - NDWI (Agua: B3-B8)', 'bands': ['B3', 'B8'], 'is_index': True},
+        'NDMI': {'label': 'INDICE - NDMI (Umidade: B8-B11)', 'bands': ['B8', 'B11'], 'is_index': True},
+        'NBR':  {'label': 'INDICE - NBR (Queimadas: B8-B12)', 'bands': ['B8', 'B12'], 'is_index': True},
+        'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['B8', 'B4', 'B2'], 'is_index': True},
+        'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['B8', 'B4'], 'is_index': True},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
     }
 }
 COMPOSITIONS['L4'] = COMPOSITIONS['L5']
@@ -207,13 +239,78 @@ def apply_sensor_scaling(img, sensor):
         # MSS L1-3
         return img.divide(255.0)
 
+INDEX_PALETTES = {
+    'NDVI': {'min': -0.2, 'max': 0.85, 'palette': ['#0000ff', '#ffffff', '#e0f3f8', '#fee08b', '#d9ef8b', '#91cf60', '#1a9850', '#00441b']},
+    'NDWI': {'min': -0.5, 'max': 0.5, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7eae5', '#5ab4ac', '#01665e']},
+    'NDMI': {'min': -0.5, 'max': 0.5, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7eae5', '#5ab4ac', '#01665e']},
+    'NBR':  {'min': -0.4, 'max': 0.8, 'palette': ['#000000', '#d73027', '#f46d43', '#fdae61', '#fee08b', '#d9ef8b', '#a6d96a', '#1a9850']},
+    'EVI':  {'min': -0.1, 'max': 0.8, 'palette': ['#0000ff', '#ffffff', '#fee08b', '#d9ef8b', '#91cf60', '#1a9850']},
+    'SAVI': {'min': -0.1, 'max': 0.8, 'palette': ['#0000ff', '#ffffff', '#fee08b', '#d9ef8b', '#91cf60', '#1a9850']},
+    'CUSTOM_MATH': {'min': -1.0, 'max': 1.0, 'palette': ['#0000ff', '#ffffff', '#ff0000']}
+}
+
+def compute_spectral_index(img, sensor, comp_code, custom_formula=None):
+    """Calcula indice espectral ou formula customizada sobre a imagem (usando reflectancia normalizada)"""
+    scaled = apply_sensor_scaling(img, sensor)
+
+    # 1. Formula Matematica Customizada
+    if comp_code == 'CUSTOM_MATH' or (custom_formula and ('(' in custom_formula or '+' in custom_formula or '-' in custom_formula or '/' in custom_formula or '*' in custom_formula)):
+        formula = custom_formula or comp_code
+        band_names = scaled.bandNames().getInfo()
+        b_dict = {}
+        for b in band_names:
+            b_dict[b] = scaled.select(b)
+            b_dict[b.lower()] = scaled.select(b)
+            b_dict[b.upper()] = scaled.select(b)
+        return scaled.expression(formula, b_dict).rename('CUSTOM_INDEX').toFloat()
+
+    # Mapeamento padrao de bandas por sensor
+    if sensor == 'S2':
+        b_blue, b_green, b_red, b_nir, b_swir1, b_swir2 = 'B2', 'B3', 'B4', 'B8', 'B11', 'B12'
+    elif sensor == 'L8':
+        b_blue, b_green, b_red, b_nir, b_swir1, b_swir2 = 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'
+    elif sensor in ['L7', 'L5', 'L4']:
+        b_blue, b_green, b_red, b_nir, b_swir1, b_swir2 = 'SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'
+    else:
+        # L1-L3 MSS
+        b_blue, b_green, b_red, b_nir, b_swir1, b_swir2 = 'B4', 'B4', 'B5', 'B7', 'B7', 'B7'
+
+    if comp_code == 'NDVI':
+        return scaled.normalizedDifference([b_nir, b_red]).rename('NDVI').toFloat()
+    elif comp_code == 'NDWI':
+        return scaled.normalizedDifference([b_green, b_nir]).rename('NDWI').toFloat()
+    elif comp_code == 'NDMI':
+        return scaled.normalizedDifference([b_nir, b_swir1]).rename('NDMI').toFloat()
+    elif comp_code == 'NBR':
+        return scaled.normalizedDifference([b_nir, b_swir2]).rename('NBR').toFloat()
+    elif comp_code == 'EVI':
+        return scaled.expression(
+            '2.5 * ((NIR - RED) / (NIR + 6.0 * RED - 7.5 * BLUE + 1.0))',
+            {'NIR': scaled.select(b_nir), 'RED': scaled.select(b_red), 'BLUE': scaled.select(b_blue)}
+        ).rename('EVI').toFloat()
+    elif comp_code == 'SAVI':
+        return scaled.expression(
+            '1.5 * ((NIR - RED) / (NIR + RED + 0.5))',
+            {'NIR': scaled.select(b_nir), 'RED': scaled.select(b_red)}
+        ).rename('SAVI').toFloat()
+
+    return scaled.normalizedDifference([b_nir, b_red]).rename(comp_code).toFloat()
+
 def get_visualization_image(img, sensor, composition_code):
     comp_map = COMPOSITIONS.get(sensor, COMPOSITIONS['L8'])
+    comp_info = comp_map.get(composition_code, {})
+
+    # Se for indice espectral, visualiza com a rampa de cores do indice
+    if comp_info.get('is_index', False) or composition_code in INDEX_PALETTES:
+        idx_img = compute_spectral_index(img, sensor, composition_code)
+        pal_info = INDEX_PALETTES.get(composition_code, INDEX_PALETTES['NDVI'])
+        return idx_img.visualize(min=pal_info['min'], max=pal_info['max'], palette=pal_info['palette'])
+
     if composition_code not in comp_map:
         first_code = list(comp_map.keys())[0]
         bands = comp_map[first_code]['bands']
     else:
-        bands = comp_map[composition_code]['bands']
+        bands = comp_info['bands']
 
     # Se for multibanda, usa bandas padrao RGB para visualizacao da miniatura
     if len(bands) > 3:
@@ -377,7 +474,7 @@ def compute_safe_scale(region_bbox, num_bands, is_multiband, requested_scale=Non
     height_m = abs(maxy - miny) * 110540.0
     area_m2 = max(width_m * height_m, 100000.0)
 
-    bytes_per_pixel = (2 * num_bands) if is_multiband else 3
+    bytes_per_pixel = 4 if (num_bands == 1 and not is_multiband) else ((2 * num_bands) if is_multiband else 3)
     target_max_bytes = 42 * 1024 * 1024  # 42 MB de limite maximo
     max_pixels = float(target_max_bytes) / float(bytes_per_pixel)
 
@@ -412,10 +509,15 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
     comp_map = COMPOSITIONS.get(sensor, COMPOSITIONS['L8'])
     comp_info = comp_map.get(composition_code, {})
 
-    # Decisao de Bandas e Modo
-    is_multi = (load_mode == 'multiband') or comp_info.get('multiband', False) or (custom_bands and len(custom_bands.split(',')) > 3)
+    is_index = comp_info.get('is_index', False) or composition_code in ['NDVI', 'NDWI', 'NDMI', 'NBR', 'EVI', 'SAVI', 'CUSTOM_MATH']
 
-    if is_multi:
+    if is_index:
+        is_multi = False
+        bands = [composition_code]
+        formula = custom_bands if composition_code == 'CUSTOM_MATH' else None
+        export_img = compute_spectral_index(img, sensor, composition_code, custom_formula=formula)
+    elif (load_mode == 'multiband') or comp_info.get('multiband', False) or (custom_bands and len(custom_bands.split(',')) > 3):
+        is_multi = True
         if custom_bands:
             bands = [b.strip() for b in custom_bands.split(',') if b.strip()]
         elif comp_info.get('bands'):
