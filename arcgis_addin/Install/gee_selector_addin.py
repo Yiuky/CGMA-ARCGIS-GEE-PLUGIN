@@ -18,12 +18,37 @@ try:
 except ImportError:
     pass
 
+def ensure_icon_and_text_style():
+    """Tenta configurar automaticamente o estilo do botao na toolbar do ArcMap para exibir Icone e Texto"""
+    try:
+        import comtypes.client
+        app = comtypes.client.CreateObject("esriFramework.AppRef")
+        doc = getattr(app, 'Document', None)
+        if doc and hasattr(doc, 'CommandBars'):
+            cb = doc.CommandBars
+            uid = comtypes.client.CreateObject("esriSystemUI.UID")
+            for cand in ["gee_selector_addin.btn_open", "{ceae58c4-c44e-4edd-b8f4-1ba7d13b6b7d}_gee_selector_addin.btn_open"]:
+                try:
+                    uid.Value = cand
+                    item = cb.Find(uid, False, False)
+                    if item:
+                        if getattr(item, 'Style', None) != 3:
+                            item.Style = 3  # esriCommandStyleIconAndText
+                            item.Refresh()
+                        return True
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return False
+
 class OpenGEESelectorButton(object):
     """Implementacao do botao na Toolbar do ArcMap"""
     def __init__(self):
         self.enabled = True
         self.checked = False
         self._last_ctx_time = 0
+        self._style_applied = False
         try:
             import gee_bridge
             try:
@@ -34,8 +59,13 @@ class OpenGEESelectorButton(object):
             gee_bridge.export_arcmap_context()
         except Exception:
             pass
+        ensure_icon_and_text_style()
 
     def onClick(self):
+        try:
+            ensure_icon_and_text_style()
+        except Exception:
+            pass
         try:
             import gee_bridge
             try:
@@ -57,6 +87,10 @@ class OpenGEESelectorButton(object):
 
     def onUpdate(self):
         try:
+            if not self._style_applied:
+                self._style_applied = True
+                ensure_icon_and_text_style()
+
             import gee_bridge
             # 1. Se o ArcMap ja estiver processando um comando, nao reentrar
             if getattr(gee_bridge, '_is_processing_cmd', False):

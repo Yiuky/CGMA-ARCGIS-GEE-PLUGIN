@@ -1283,6 +1283,15 @@ def process_pending_arcmap_commands():
                     settings=cmd.get('settings')
                 )
                 resp = {'reply_to': cmd_id, 'success': ok, 'message': msg}
+            elif action == 'eval_code':
+                code_str = cmd.get('code', '')
+                loc = {'result': None, 'error': None}
+                try:
+                    exec(code_str, globals(), loc)
+                    resp = {'reply_to': cmd_id, 'success': True, 'result': repr(loc.get('result'))}
+                except Exception as ex:
+                    import traceback
+                    resp = {'reply_to': cmd_id, 'success': False, 'message': unicode(ex) + u"\n" + unicode(traceback.format_exc())}
         except Exception as ex:
             import traceback
             resp = {'reply_to': cmd_id, 'success': False, 'message': unicode(ex) + u"\n" + unicode(traceback.format_exc())}
