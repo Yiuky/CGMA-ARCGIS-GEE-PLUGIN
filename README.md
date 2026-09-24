@@ -1,14 +1,16 @@
-# CGMA ArcGEE Explorer (v1.4)
+# CGMA ArcGEE Explorer | Google Earth Engine for ArcGIS Desktop (ArcMap)
 
-[![ArcGIS](https://img.shields.io/badge/ArcGIS%20Desktop-10.8%20%7C%2010.8.2-blue.svg)](https://www.esri.com/)
+[![ArcGIS Desktop](https://img.shields.io/badge/ArcGIS%20Desktop-10.8%20%7C%2010.8.2-blue.svg)](https://www.esri.com/)
 [![Google Earth Engine](https://img.shields.io/badge/Google%20Earth%20Engine-API-green.svg)](https://earthengine.google.com/)
 [![Python](https://img.shields.io/badge/Python-2.7%20%7C%203.9+-yellow.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Versão-v1.4%20Estável-brightgreen.svg)]()
+[![Repository](https://img.shields.io/badge/GitHub-arcgis--google--earth--engine--explorer-blue)](https://github.com/Yiuky/arcgis-google-earth-engine-explorer)
 
-Ferramenta avançada para o **ArcGIS Desktop 10.8 / 10.8.2 (ArcMap)** que integra diretamente a infraestrutura do **Google Earth Engine (GEE)** ao ambiente SIG da Esri. O **CGMA ArcGEE Explorer** permite pesquisar, filtrar, pré-visualizar e descarregar imagens de satélite (**Sentinel-2** e **Landsats 1 a 8**), índices espectrais e matemática de bandas diretamente na Tabela de Conteúdos (**TOC**) do ArcMap com **garantia estrita de 100% da resolução nativa** (sem reamostragem ou degradação de qualidade).
+> **Ferramenta oficial e Add-In para ArcGIS Desktop 10.8 / 10.8.2 (ArcMap) com integração direta ao Google Earth Engine (GEE).**  
+> Pesquise, filtre, visualize e faça o download de imagens de satélite (**Sentinel-2** e **Landsat 1 a 9**), índices espectrais (NDVI, NDWI, NBR, EVI, SAVI) e matemática de bandas customizada diretamente na Tabela de Conteúdos (**TOC**) do ArcMap, garantindo **100% da resolução espacial nativa** (sem reamostragem).
 
-Desenvolvido para operações de geoprocessamento e monitoramento ambiental da **CGMA / SEMA-MT**.
+Desenvolvido para operações de geoprocessamento, sensoriamento remoto e monitoramento ambiental da **Coordenadoria de Geoprocessamento e Monitoramento Ambiental (CGMA / SEMA-MT)**.
 
 ---
 
@@ -97,8 +99,8 @@ O repositório já inclui um script automatizado de instalação com 1 clique pa
 
 ### Passo 1: Baixar ou Clonar o Repositório
 ```bash
-git clone https://github.com/Yiuky/CGMA-ARCGIS-GEE-PLUGIN.git
-cd CGMA-ARCGIS-GEE-PLUGIN
+git clone https://github.com/Yiuky/arcgis-google-earth-engine-explorer.git
+cd arcgis-google-earth-engine-explorer
 ```
 *(Ou baixe o arquivo ZIP pelo GitHub e extraia em qualquer pasta, ex: `C:\CGMA_ARCGIS_GEE_PLUGIN`)*.
 
@@ -168,7 +170,7 @@ Se preferir instalar manualmente ou sem scripts:
 ## 🗂️ Estrutura do Repositório
 
 ```text
-CGMA-ARCGIS-GEE-PLUGIN/
+arcgis-google-earth-engine-explorer/
 ├── arcgis_addin/
 │   ├── config.xml                      # Metadados do Add-In (versão, toolbar, comandos)
 │   ├── makeaddin.py                    # Script de empacotamento do .esriaddin
@@ -240,9 +242,16 @@ CGMA-ARCGIS-GEE-PLUGIN/
 
 ---
 
+## 🔍 Palavras-chave / Search Keywords (SEO)
+
+`arcgis-google-earth-engine` • `arcgis-gee-plugin` • `arcmap-earth-engine` • `arcgis-desktop-gee` • `google-earth-engine-explorer` • `arcgee-explorer` • `sentinel-2-arcgis` • `landsat-arcgis-download` • `remote-sensing-arcgis` • `geoprocessamento-arcgis-gee` • `sema-mt-cgma` • `arcgis-addin-gee` • `esri-google-earth-engine` • `python-arcpy-gee` • `google-earth-engine-arcmap-addin`
+
+---
+
 ## 👤 Autor e Licença
 
 * **Autor:** Joberth Firmino Gambati
 * **GitHub:** [@Yiuky](https://github.com/Yiuky)
 * **Organização:** Coordenadoria de Geoprocessamento e Monitoramento Ambiental (CGMA) / SEMA-MT
 * **Licença:** Distribuído sob a licença [MIT](LICENSE). Uso livre para fins institucionais, acadêmicos e comerciais.
+

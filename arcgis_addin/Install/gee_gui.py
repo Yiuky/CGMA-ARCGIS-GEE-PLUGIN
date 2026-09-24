@@ -469,7 +469,7 @@ class GEEAboutDialog(object):
 
     def _open_github(self):
         try:
-            webbrowser.open("https://github.com/Yiuky/CGMA-ARCGIS-GEE-PLUGIN")
+            webbrowser.open("https://github.com/Yiuky/arcgis-google-earth-engine-explorer")
         except Exception:
             pass
 
@@ -604,7 +604,7 @@ class GEEUpdaterDialog(object):
 
                 if not success:
                     import urllib
-                    zip_url = "https://github.com/Yiuky/CGMA-ARCGIS-GEE-PLUGIN/archive/refs/heads/main.zip"
+                    zip_url = "https://github.com/Yiuky/arcgis-google-earth-engine-explorer/archive/refs/heads/main.zip"
                     tmp_zip = os.path.join(tempfile.gettempdir(), "gee_plugin_update.zip")
                     try:
                         if sys.version_info[0] < 3:
@@ -976,7 +976,7 @@ class GEEPluginWindow(object):
                     if sys.version_info[0] < 3:
                         import urllib2
                         req = urllib2.Request(
-                            "https://api.github.com/repos/Yiuky/CGMA-ARCGIS-GEE-PLUGIN/commits/main",
+                            "https://api.github.com/repos/Yiuky/arcgis-google-earth-engine-explorer/commits/main",
                             headers={'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck'}
                         )
                         res = urllib2.urlopen(req, timeout=5)
@@ -986,7 +986,7 @@ class GEEPluginWindow(object):
                         import urllib.request
                         import json
                         req = urllib.request.Request(
-                            "https://api.github.com/repos/Yiuky/CGMA-ARCGIS-GEE-PLUGIN/commits/main",
+                            "https://api.github.com/repos/Yiuky/arcgis-google-earth-engine-explorer/commits/main",
                             headers={'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck'}
                         )
                         res = urllib.request.urlopen(req, timeout=5)
@@ -1004,7 +1004,7 @@ class GEEPluginWindow(object):
         # 2. Checagem de versão no config.xml remoto caso commit não tenha apontado ou não use git
         if not has_update:
             try:
-                raw_url = "https://raw.githubusercontent.com/Yiuky/CGMA-ARCGIS-GEE-PLUGIN/main/arcgis_addin/config.xml"
+                raw_url = "https://raw.githubusercontent.com/Yiuky/arcgis-google-earth-engine-explorer/main/arcgis_addin/config.xml"
                 if sys.version_info[0] < 3:
                     import urllib2
                     req = urllib2.Request(raw_url, headers={'User-Agent': 'CGMA-ArcGEE-Explorer-UpdateCheck'})

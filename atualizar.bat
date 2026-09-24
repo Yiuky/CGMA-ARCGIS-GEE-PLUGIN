@@ -24,7 +24,7 @@ if exist ".git" (
 
 :download_zip
 echo Baixando versao mais recente via GitHub ZIP...
-powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/Yiuky/CGMA-ARCGIS-GEE-PLUGIN/archive/refs/heads/main.zip' -OutFile '%TEMP%\gee_plugin_update.zip'"
+powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/Yiuky/arcgis-google-earth-engine-explorer/archive/refs/heads/main.zip' -OutFile '%TEMP%\gee_plugin_update.zip'"
 if %errorlevel% neq 0 (
     echo [ERRO] Nao foi possivel baixar o arquivo do GitHub. Verifique sua conexao.
     pause
@@ -32,7 +32,7 @@ if %errorlevel% neq 0 (
 )
 
 echo Extraindo arquivos atualizados...
-powershell -Command "Expand-Archive -Path '%TEMP%\gee_plugin_update.zip' -DestinationPath '%TEMP%\gee_plugin_extracted' -Force; Copy-Item '%TEMP%\gee_plugin_extracted\CGMA-ARCGIS-GEE-PLUGIN-main\*' '%SCRIPT_DIR%' -Recurse -Force; Remove-Item '%TEMP%\gee_plugin_extracted' -Recurse -Force; Remove-Item '%TEMP%\gee_plugin_update.zip' -Force"
+powershell -Command "Expand-Archive -Path '%TEMP%\gee_plugin_update.zip' -DestinationPath '%TEMP%\gee_plugin_extracted' -Force; Copy-Item '%TEMP%\gee_plugin_extracted\arcgis-google-earth-engine-explorer-main\*' '%SCRIPT_DIR%' -Recurse -Force; Remove-Item '%TEMP%\gee_plugin_extracted' -Recurse -Force; Remove-Item '%TEMP%\gee_plugin_update.zip' -Force"
 
 :compile_deploy
 echo.
