@@ -31,12 +31,14 @@ if sys.version_info[0] < 3:
     import ttk
     import tkMessageBox as messagebox
     import tkSimpleDialog as simpledialog
+    import tkFileDialog as filedialog
     import Queue as queue_mod
 else:
     import tkinter as tk
     from tkinter import ttk
     from tkinter import messagebox
     from tkinter import simpledialog
+    from tkinter import filedialog
     import queue as queue_mod
 
 import gee_bridge
@@ -47,7 +49,7 @@ class GEESettingsDialog(object):
         self.parent = parent
         self.top = tk.Toplevel(parent)
         self.top.title(u"Configurações - GEE ArcGIS Plugin")
-        self.top.geometry("540x500")
+        self.top.geometry("540x630")
         self.top.resizable(False, False)
         self.top.transient(parent)
         self.top.grab_set()
@@ -55,7 +57,7 @@ class GEESettingsDialog(object):
         # Centralizar na janela pai
         try:
             x = parent.winfo_rootx() + (parent.winfo_width() // 2) - 270
-            y = parent.winfo_rooty() + (parent.winfo_height() // 2) - 250
+            y = parent.winfo_rooty() + (parent.winfo_height() // 2) - 315
             self.top.geometry("+%d+%d" % (max(0, x), max(0, y)))
         except Exception:
             pass
@@ -182,7 +184,40 @@ class GEESettingsDialog(object):
         )
         lbl_multi_desc.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
 
-        # 4. Barra de Botoes
+        # 4. Grupo Buffer da Camada Vetorial (AOI)
+        grp_aoi = ttk.LabelFrame(main_pad, text=u" Buffer do Retângulo Envolvente (AOI) ", padding=10)
+        grp_aoi.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(grp_aoi, text=u"Buffer Adicional (metros):").grid(row=0, column=0, sticky=tk.W, pady=4)
+        init_buffer = float(self.settings.get('aoi_buffer_meters', 0.0))
+        self.var_aoi_buffer = tk.DoubleVar(value=init_buffer)
+        self.spn_aoi_buffer = tk.Spinbox(
+            grp_aoi,
+            from_=0,
+            to=50000,
+            increment=100,
+            textvariable=self.var_aoi_buffer,
+            width=10
+        )
+        self.spn_aoi_buffer.grid(row=0, column=1, sticky=tk.W, padx=8, pady=4)
+
+        lbl_buffer_hint = ttk.Label(
+            grp_aoi,
+            text=u"(Padrão: 0m = envelope exato | ex: 500m, 1000m)",
+            font=("Segoe UI", 8),
+            foreground="#555"
+        )
+        lbl_buffer_hint.grid(row=0, column=1, sticky=tk.W, padx=(100, 0), pady=4)
+
+        lbl_aoi_desc = ttk.Label(
+            grp_aoi,
+            text=u"• Expande o retângulo envolvente da AOI em N metros em todas as direções\n  para garantir margem de contexto geográfico no raster exportado.",
+            font=("Segoe UI", 8),
+            foreground="#1b4f72"
+        )
+        lbl_aoi_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+
+        # 5. Barra de Botoes
         btn_bar = ttk.Frame(main_pad)
         btn_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(6, 0))
 
@@ -219,6 +254,7 @@ class GEESettingsDialog(object):
         self.var_stats.set("From Current Display Extent")
         self.var_multicore.set(True)
         self.var_cores.set(min(4, self.max_system_cores))
+        self.var_aoi_buffer.set(0.0)
         self._on_stretch_changed()
         self._on_multi_toggled()
 
@@ -228,13 +264,325 @@ class GEESettingsDialog(object):
             'stretch_std_param': float(self.var_std_param.get()),
             'statistics_type': self.var_stats.get(),
             'multicore_enabled': bool(self.var_multicore.get()),
-            'multicore_cores': int(self.var_cores.get())
+            'multicore_cores': int(self.var_cores.get()),
+            'aoi_buffer_meters': float(self.var_aoi_buffer.get())
         }
         if gee_bridge.save_plugin_settings(new_settings):
-            messagebox.showinfo(u"Configurações Salvas", u"As preferências de Stretch, Estatísticas e Multicore foram salvas com sucesso!", parent=self.top)
+            if hasattr(self.parent, 'settings'):
+                self.parent.settings = new_settings
+            messagebox.showinfo(u"Configurações Salvas", u"As preferências de Stretch, Estatísticas, Multicore e Buffer de AOI foram salvas com sucesso!", parent=self.top)
             self.top.destroy()
         else:
             messagebox.showerror(u"Erro", u"Falha ao salvar arquivo de configurações.", parent=self.top)
+
+class GEEAboutDialog(object):
+    """Janela modal Sobre com informações institucionais, versão, links e dicas"""
+    def __init__(self, parent):
+        self.parent = parent
+        self.top = tk.Toplevel(parent)
+        self.top.title(u"Sobre - CGMA ArcGIS GEE Plugin")
+        self.top.geometry("560x490")
+        self.top.resizable(False, False)
+        self.top.transient(parent)
+        self.top.grab_set()
+
+        try:
+            x = parent.winfo_rootx() + (parent.winfo_width() // 2) - 280
+            y = parent.winfo_rooty() + (parent.winfo_height() // 2) - 245
+            self.top.geometry("+%d+%d" % (max(0, x), max(0, y)))
+        except Exception:
+            pass
+
+        pad = ttk.Frame(self.top, padding=16)
+        pad.pack(fill=tk.BOTH, expand=True)
+
+        lbl_title = tk.Label(
+            pad,
+            text=u"CGMA ArcGIS GEE Plugin",
+            font=("Segoe UI", 14, "bold"),
+            fg="#0b5345"
+        )
+        lbl_title.pack(anchor=tk.W, pady=(0, 2))
+
+        lbl_sub = tk.Label(
+            pad,
+            text=u"Google Earth Engine Integration for ArcGIS Desktop 10.8 (ArcMap)  |  v1.4",
+            font=("Segoe UI", 9, "italic"),
+            fg="#566573"
+        )
+        lbl_sub.pack(anchor=tk.W, pady=(0, 10))
+
+        sep1 = ttk.Separator(pad, orient=tk.HORIZONTAL)
+        sep1.pack(fill=tk.X, pady=(0, 10))
+
+        info_frame = ttk.LabelFrame(pad, text=u" Informações do Sistema ", padding=10)
+        info_frame.pack(fill=tk.X, pady=(0, 10))
+
+        info_text = (
+            u"• Versão: v1.4 (Garantia Estrita de Qualidade Nativa 100%)\n"
+            u"• Organização: Coordenadoria de Geoprocessamento e Monitoramento Ambiental\n"
+            u"  Secretaria de Estado de Meio Ambiente de Mato Grosso (CGMA / SEMA-MT)\n"
+            u"• Desenvolvedor: Joberth Firmino Gambati\n"
+            u"• Compatibilidade: ArcGIS Desktop 10.8 / 10.8.2 (ArcMap) & Python 3.9+\n"
+            u"• Licença: Código Aberto (MIT License)"
+        )
+        ttk.Label(info_frame, text=info_text, justify=tk.LEFT).pack(anchor=tk.W)
+
+        tips_frame = ttk.LabelFrame(pad, text=u" Dicas Rápidas de Operação ", padding=10)
+        tips_frame.pack(fill=tk.X, pady=(0, 12))
+
+        tips_text = (
+            u"1. Resolução Nativa: Sentinel-2 (10m) e Landsat (30m) sem qualquer perda.\n"
+            u"2. Limite GEE 48 MB: Para Sentinel-2, utilize zoom <= 1:250.000 ou Camada (AOI).\n"
+            u"3. Buffer de AOI: Ajuste em 'Configurações' a margem em metros ao redor do vetor.\n"
+            u"4. Simbologia e Bandas: Altere as bandas RGB no TOC diretamente com botão direito."
+        )
+        ttk.Label(tips_frame, text=tips_text, justify=tk.LEFT).pack(anchor=tk.W)
+
+        btn_bar = ttk.Frame(pad)
+        btn_bar.pack(fill=tk.X, side=tk.BOTTOM)
+
+        btn_gh = ttk.Button(btn_bar, text=u"🌐 Abrir Repositório no GitHub", command=self._open_github)
+        btn_gh.pack(side=tk.LEFT)
+
+        btn_close = ttk.Button(btn_bar, text=u"Fechar", command=self.top.destroy)
+        btn_close.pack(side=tk.RIGHT)
+
+    def _open_github(self):
+        try:
+            webbrowser.open("https://github.com/Yiuky/CGMA-ARCGIS-GEE-PLUGIN")
+        except Exception:
+            pass
+
+class GEEUpdaterDialog(object):
+    """Janela modal para atualização automática do plugin via GitHub ou arquivo ZIP"""
+    def __init__(self, parent):
+        self.parent = parent
+        self.top = tk.Toplevel(parent.root if hasattr(parent, 'root') else parent)
+        self.top.title(u"Atualizar Plugin - GEE ArcGIS")
+        self.top.geometry("540x380")
+        self.top.resizable(False, False)
+        self.top.transient(parent.root if hasattr(parent, 'root') else parent)
+        self.top.grab_set()
+
+        try:
+            p_win = parent.root if hasattr(parent, 'root') else parent
+            x = p_win.winfo_rootx() + (p_win.winfo_width() // 2) - 270
+            y = p_win.winfo_rooty() + (p_win.winfo_height() // 2) - 190
+            self.top.geometry("+%d+%d" % (max(0, x), max(0, y)))
+        except Exception:
+            pass
+
+        pad = ttk.Frame(self.top, padding=16)
+        pad.pack(fill=tk.BOTH, expand=True)
+
+        lbl_head = tk.Label(
+            pad,
+            text=u"Atualização do CGMA ArcGIS GEE Plugin",
+            font=("Segoe UI", 12, "bold"),
+            fg="#1b4f72"
+        )
+        lbl_head.pack(anchor=tk.W, pady=(0, 6))
+
+        lbl_desc = ttk.Label(
+            pad,
+            text=u"Escolha o método desejado para atualizar o plugin e seus componentes:"
+        )
+        lbl_desc.pack(anchor=tk.W, pady=(0, 10))
+
+        box_git = ttk.LabelFrame(pad, text=u" Método 1: Atualizar Diretamente via GitHub (Online) ", padding=10)
+        box_git.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(
+            box_git,
+            text=u"Baixa as alterações mais recentes do repositório oficial no GitHub,\nrecompila o Add-In e atualiza o AssemblyCache do ArcMap."
+        ).pack(anchor=tk.W, pady=(0, 6))
+
+        self.btn_git_update = ttk.Button(box_git, text=u"⬇ Atualizar pelo GitHub Agora", command=self._do_github_update)
+        self.btn_git_update.pack(anchor=tk.W)
+
+        box_zip = ttk.LabelFrame(pad, text=u" Método 2: Atualizar a partir de Arquivo ZIP Local ", padding=10)
+        box_zip.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(
+            box_zip,
+            text=u"Selecione um arquivo .zip com a nova versão do plugin para instalar offline."
+        ).pack(anchor=tk.W, pady=(0, 6))
+
+        self.btn_zip_update = ttk.Button(box_zip, text=u"📂 Selecionar Arquivo ZIP e Atualizar", command=self._do_zip_update)
+        self.btn_zip_update.pack(anchor=tk.W)
+
+        self.lbl_status = ttk.Label(pad, text=u"Pronto para atualizar.", font=("Segoe UI", 8), foreground="#555")
+        self.lbl_status.pack(anchor=tk.W, pady=(0, 6))
+
+        btn_close = ttk.Button(pad, text=u"Fechar", command=self.top.destroy)
+        btn_close.pack(side=tk.RIGHT)
+
+    def _get_plugin_root(self):
+        curr = os.path.dirname(os.path.abspath(__file__))
+        p = os.path.abspath(os.path.join(curr, "..", ".."))
+        if os.path.exists(os.path.join(p, "arcgis_addin")):
+            return p
+        return curr
+
+    def _redeploy_plugin(self, root_dir):
+        make_script = os.path.join(root_dir, "arcgis_addin", "makeaddin.py")
+        if os.path.exists(make_script):
+            import subprocess
+            py_exe = sys.executable
+            subprocess.call([py_exe, make_script], cwd=root_dir)
+
+        addin_src = os.path.join(root_dir, "arcgis_addin", "GEE_Image_Selector.esriaddin")
+        user_prof = os.environ.get('USERPROFILE', '')
+        addin_dest = os.path.join(user_prof, r"Documents\ArcGIS\AddIns\Desktop10.8\{ceae58c4-c44e-4edd-b8f4-1ba7d13b6b7d}\GEE_Image_Selector.esriaddin")
+        cache_dir = os.path.join(user_prof, r"AppData\Local\ESRI\Desktop10.8\AssemblyCache\{CEAE58C4-C44E-4EDD-B8F4-1BA7D13B6B7D}")
+        install_src = os.path.join(root_dir, "arcgis_addin", "Install")
+
+        import shutil
+        if os.path.exists(addin_src) and os.path.exists(os.path.dirname(addin_dest)):
+            try: shutil.copy2(addin_src, addin_dest)
+            except Exception: pass
+
+        if os.path.exists(cache_dir) and os.path.exists(install_src):
+            for item in os.listdir(install_src):
+                s = os.path.join(install_src, item)
+                d = os.path.join(cache_dir, item)
+                try:
+                    if os.path.isdir(s):
+                        if os.path.exists(d): shutil.rmtree(d)
+                        shutil.copytree(s, d)
+                    else:
+                        shutil.copy2(s, d)
+                except Exception:
+                    pass
+
+    def _do_github_update(self):
+        self.lbl_status.config(text=u"Conectando ao GitHub para baixar atualizações...")
+        self.btn_git_update.config(state=tk.DISABLED)
+
+        def worker():
+            root_dir = self._get_plugin_root()
+            success = False
+            msg = ""
+            try:
+                git_dir = os.path.join(root_dir, ".git")
+                if os.path.exists(git_dir):
+                    import subprocess
+                    r = subprocess.call(["git", "pull", "origin", "main"], cwd=root_dir)
+                    if r == 0:
+                        success = True
+                        msg = u"Repositório sincronizado via Git com sucesso!"
+
+                if not success:
+                    import urllib
+                    zip_url = "https://github.com/Yiuky/CGMA-ARCGIS-GEE-PLUGIN/archive/refs/heads/main.zip"
+                    tmp_zip = os.path.join(tempfile.gettempdir(), "gee_plugin_update.zip")
+                    try:
+                        if sys.version_info[0] < 3:
+                            urllib.urlretrieve(zip_url, tmp_zip)
+                        else:
+                            import urllib.request
+                            urllib.request.urlretrieve(zip_url, tmp_zip)
+
+                        import zipfile
+                        with zipfile.ZipFile(tmp_zip, 'r') as z:
+                            for member in z.infolist():
+                                parts = member.filename.split('/', 1)
+                                if len(parts) > 1 and parts[1]:
+                                    target_p = os.path.join(root_dir, parts[1])
+                                    if member.is_dir():
+                                        os.makedirs(target_p)
+                                    else:
+                                        os.makedirs(os.path.dirname(target_p), exist_ok=True)
+                                        with z.open(member) as src, open(target_p, 'wb') as dst:
+                                            dst.write(src.read())
+                        success = True
+                        msg = u"Código mais recente baixado e extraído do GitHub com sucesso!"
+                    except Exception as ex_dl:
+                        msg = u"Erro ao baixar do GitHub: " + str(ex_dl)
+
+                if success:
+                    self._redeploy_plugin(root_dir)
+
+                def show_result():
+                    self.btn_git_update.config(state=tk.NORMAL)
+                    if success:
+                        self.lbl_status.config(text=u"Atualização concluída com sucesso!")
+                        messagebox.showinfo(
+                            u"Atualização Concluída",
+                            u"%s\n\nO Add-In e o AssemblyCache foram recompilados.\nReabra o Seletor GEE ou reinicie o ArcMap para aplicar as alterações." % msg,
+                            parent=self.top
+                        )
+                        self.top.destroy()
+                    else:
+                        self.lbl_status.config(text=u"Falha na atualização.")
+                        messagebox.showerror(u"Erro na Atualização", msg, parent=self.top)
+
+                if hasattr(self.parent, 'post_to_gui'):
+                    self.parent.post_to_gui(show_result)
+                else:
+                    self.top.after(0, show_result)
+            except Exception as e:
+                err_text = str(e)
+                def on_err():
+                    self.btn_git_update.config(state=tk.NORMAL)
+                    messagebox.showerror(u"Erro Inesperado", err_text, parent=self.top)
+                self.top.after(0, on_err)
+
+        threading.Thread(target=worker).start()
+
+    def _do_zip_update(self):
+        zip_path = filedialog.askopenfilename(
+            title=u"Selecione o arquivo ZIP de atualização do Plugin",
+            filetypes=[("Arquivos ZIP (*.zip)", "*.zip")],
+            parent=self.top
+        )
+        if not zip_path or not os.path.exists(zip_path):
+            return
+
+        self.lbl_status.config(text=u"Extraindo pacote ZIP selecionado...")
+        root_dir = self._get_plugin_root()
+
+        try:
+            import zipfile
+            with zipfile.ZipFile(zip_path, 'r') as z:
+                has_root_prefix = False
+                names = z.namelist()
+                if names and '/' in names[0]:
+                    first_dir = names[0].split('/')[0]
+                    if all(n.startswith(first_dir + '/') for n in names if n != first_dir + '/'):
+                        has_root_prefix = True
+
+                for member in z.infolist():
+                    if has_root_prefix:
+                        parts = member.filename.split('/', 1)
+                        if len(parts) > 1 and parts[1]:
+                            rel_name = parts[1]
+                        else:
+                            continue
+                    else:
+                        rel_name = member.filename
+
+                    if not rel_name:
+                        continue
+                    target_p = os.path.join(root_dir, rel_name)
+                    if member.filename.endswith('/'):
+                        os.makedirs(target_p)
+                    else:
+                        os.makedirs(os.path.dirname(target_p), exist_ok=True)
+                        with z.open(member) as src, open(target_p, 'wb') as dst:
+                            dst.write(src.read())
+
+            self._redeploy_plugin(root_dir)
+            self.lbl_status.config(text=u"Atualização via ZIP concluída com sucesso!")
+            messagebox.showinfo(
+                u"Atualização Concluída",
+                u"O pacote ZIP foi aplicado e o Add-In recompilado com sucesso!\n\nReabra a ferramenta para carregar a nova versão.",
+                parent=self.top
+            )
+            self.top.destroy()
+        except Exception as e:
+            messagebox.showerror(u"Erro ao Extrair ZIP", str(e), parent=self.top)
 
 SENSOR_DISPLAY = [
     ("Sentinel-2 (Harmonized)", "S2"),
@@ -296,6 +644,7 @@ class GEEPluginWindow(object):
         self.is_authenticated = False
         self.images_cache = []
         self.is_downloading = False
+        self.settings = gee_bridge.load_plugin_settings()
 
         self.setup_ui()
         self.populate_initial_data()
@@ -416,6 +765,12 @@ class GEEPluginWindow(object):
             fg="#1b4f72"
         )
         self.lbl_scale_info.pack(side=tk.LEFT, padx=10)
+
+        self.btn_about = ttk.Button(self.top_frame, text=u"ℹ Sobre", command=self.on_open_about)
+        self.btn_about.pack(side=tk.RIGHT, padx=4)
+
+        self.btn_update = ttk.Button(self.top_frame, text=u"🔄 Atualizar", command=self.on_open_updater)
+        self.btn_update.pack(side=tk.RIGHT, padx=4)
 
         self.btn_settings = ttk.Button(self.top_frame, text=u"⚙ Configurações", command=self.on_open_settings)
         self.btn_settings.pack(side=tk.RIGHT, padx=4)
@@ -863,8 +1218,16 @@ class GEEPluginWindow(object):
             gee_bridge.launch_auth_console()
 
     def on_open_settings(self):
-        """Abre a janela modal de configuracoes de Stretch, Estatisticas e Multicore"""
-        GEESettingsDialog(self.root)
+        """Abre a janela modal de configuracoes de Stretch, Estatisticas, Multicore e AOI Buffer"""
+        GEESettingsDialog(self)
+
+    def on_open_about(self):
+        """Abre a janela modal Sobre com informacoes institucionais e dicas"""
+        GEEAboutDialog(self.root)
+
+    def on_open_updater(self):
+        """Abre a janela modal de atualizacao do plugin via GitHub ou ZIP local"""
+        GEEUpdaterDialog(self)
 
     def get_selected_composition_code(self):
         val = self.var_comp.get()
@@ -924,8 +1287,9 @@ class GEEPluginWindow(object):
                 if st == "layer":
                     lyr_name = self.cbo_layers.get()
                     if lyr_name and lyr_name != "Nenhuma camada encontrada":
+                        buf = float(self.settings.get('aoi_buffer_meters', 0.0) if hasattr(self, 'settings') else 0.0)
                         self.post_to_gui(lambda: self.lbl_progress.config(text="Exportando AOI da camada '%s' do ArcMap..." % lyr_name))
-                        rep = gee_bridge.send_arcmap_command({'action': 'export_aoi', 'layer_name': lyr_name}, timeout=15)
+                        rep = gee_bridge.send_arcmap_command({'action': 'export_aoi', 'layer_name': lyr_name, 'buffer_meters': buf}, timeout=15)
                         if rep.get('success'):
                             g_file = rep.get('file')
 
@@ -1090,7 +1454,8 @@ class GEEPluginWindow(object):
             if not lyr_name or lyr_name == "Nenhuma camada encontrada":
                 messagebox.showwarning(u"Camada Inválida", u"Selecione uma camada vetorial (AOI) válida no ArcMap.", parent=self.root)
                 return False, None, False
-            rep = gee_bridge.send_arcmap_command({'action': 'export_aoi', 'layer_name': lyr_name}, timeout=10)
+            buf = float(self.settings.get('aoi_buffer_meters', 0.0) if hasattr(self, 'settings') else 0.0)
+            rep = gee_bridge.send_arcmap_command({'action': 'export_aoi', 'layer_name': lyr_name, 'buffer_meters': buf}, timeout=10)
             if rep.get('success'):
                 self.current_aoi_file = rep.get('file')
             else:

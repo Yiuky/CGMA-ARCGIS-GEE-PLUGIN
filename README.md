@@ -191,11 +191,24 @@ CGMA-ARCGIS-GEE-PLUGIN/
 ├── pyt/
 │   └── GEE_Tools.pyt                   # Caixa de ferramentas Python para ArcToolbox
 ├── install.bat                         # Instalador automatizado para Windows
+├── desinstalar.bat                     # Desinstalador automático e limpeza de cache
+├── atualizar.bat                       # Atualizador direto via GitHub ou ZIP
 ├── autenticar_gee.bat                  # Utilitário de autenticação GEE
 ├── requirements.txt                    # Dependências do Python 3
 ├── .gitignore                          # Arquivos ignorados pelo controle de versão
 └── README.md                           # Documentação completa
 ```
+
+---
+
+## 🔄 Como Atualizar ou Desinstalar
+
+### Atualizar o Plugin:
+- **Pela Interface:** Clique no botão **`[ 🔄 Atualizar ]`** no topo da janela do plugin e escolha atualizar via GitHub ou via arquivo ZIP local.
+- **Pelo Prompt/Windows Explorer:** Dê um duplo clique em **`atualizar.bat`**.
+
+### Desinstalar o Plugin:
+- Dê um duplo clique no arquivo **`desinstalar.bat`** na pasta do plugin. Ele encerrará os processos em segundo plano, removerá o arquivo `.esriaddin` da pasta do ArcGIS e limpará os caches residuais (`AssemblyCache`).
 
 ---
 

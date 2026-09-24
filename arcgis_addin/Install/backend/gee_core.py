@@ -343,6 +343,23 @@ def normalize_date(d_str):
         return "%04d-%02d-%02d" % (int(year), int(month), int(day))
     return d_str
 
+def parse_ee_geometry(geom_dict):
+    """Converte com seguranca qualquer formato GeoJSON (Polygon, MultiPolygon, Feature, FeatureCollection) para ee.Geometry"""
+    if not geom_dict:
+        return None
+    gtype = geom_dict.get('type')
+    if gtype == 'FeatureCollection':
+        return ee.FeatureCollection(geom_dict).geometry()
+    elif gtype == 'Feature':
+        return ee.Feature(geom_dict).geometry()
+    elif gtype in ['Polygon', 'MultiPolygon', 'Point', 'MultiPoint', 'LineString', 'MultiLineString', 'GeometryCollection']:
+        return ee.Geometry(geom_dict)
+    elif 'coordinates' in geom_dict:
+        return ee.Geometry(geom_dict)
+    elif 'features' in geom_dict:
+        return ee.FeatureCollection(geom_dict).geometry()
+    return ee.Geometry(geom_dict)
+
 def search_collection(sensor, start_date, end_date, bbox=None, geometry=None, path=None, row=None, mgrs=None, max_images=150):
     coll = get_image_collection(sensor)
 
@@ -363,7 +380,7 @@ def search_collection(sensor, start_date, end_date, bbox=None, geometry=None, pa
     # Filtro espacial estrito: Extensao da tela (bbox) ou Camada Vetorial (geometry)
     aoi = None
     if geometry:
-        aoi = ee.Geometry(geometry)
+        aoi = parse_ee_geometry(geometry)
     elif bbox:
         # [minx, miny, maxx, maxy]
         aoi = ee.Geometry.BBox(bbox[0], bbox[1], bbox[2], bbox[3])
@@ -547,9 +564,8 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
     region = None
     calc_bbox = None
     if aoi_geometry:
-        region = ee.Geometry(aoi_geometry)
+        region = parse_ee_geometry(aoi_geometry)
         try:
-            coords = aoi_geometry.get('coordinates', [])
             all_pts = []
             def extract_pts(c):
                 if isinstance(c, (list, tuple)):
@@ -558,7 +574,11 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
                     else:
                         for sub in c:
                             extract_pts(sub)
+            coords = aoi_geometry.get('coordinates', [])
             extract_pts(coords)
+            if not all_pts and 'features' in aoi_geometry:
+                for ft in aoi_geometry.get('features', []):
+                    extract_pts(ft.get('geometry', {}).get('coordinates', []))
             if all_pts:
                 xs = [p[0] for p in all_pts]
                 ys = [p[1] for p in all_pts]

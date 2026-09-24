@@ -376,62 +376,67 @@ def get_arcmap_raster_layers():
         print("Erro listando camadas raster:", e)
         return []
 
-def export_layer_to_geojson(layer_name, out_geojson):
-    """Exporta a geometria/envelope da camada ativa para GeoJSON em WGS84"""
+def export_layer_to_geojson(layer_name, out_geojson, buffer_meters=None):
+    """Exporta o retangulo envolvente (envelope) da camada ativa para GeoJSON em WGS84 com buffer opcional em metros"""
     if not arcpy:
         return None
     try:
+        import math
         mxd = arcpy.mapping.MapDocument("CURRENT")
         layers = arcpy.mapping.ListLayers(mxd, layer_name)
         if not layers:
             return None
         lyr = layers[0]
         sr_wgs84 = arcpy.SpatialReference(4326)
-        
-        # Otimizacao: se a camada tiver mais de 50 feicoes, usamos o envelope/extent para evitar travamento
-        count = 0
-        try:
-            count = int(arcpy.GetCount_management(lyr).getOutput(0))
-        except Exception:
-            pass
 
-        if count > 50:
-            ext = lyr.getExtent().projectAs(sr_wgs84)
-            bbox_poly = [
-                [ext.XMin, ext.YMin],
-                [ext.XMax, ext.YMin],
-                [ext.XMax, ext.YMax],
-                [ext.XMin, ext.YMax],
-                [ext.XMin, ext.YMin]
-            ]
-            geojson_data = {
-                "type": "FeatureCollection",
-                "features": [{
-                    "type": "Feature",
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [bbox_poly]
-                    },
-                    "properties": {}
-                }]
-            }
+        if buffer_meters is None:
+            settings = load_plugin_settings()
+            buffer_meters = float(settings.get('aoi_buffer_meters', 0.0))
         else:
-            geometries = []
-            with arcpy.da.SearchCursor(lyr, ["SHAPE@"], spatial_reference=sr_wgs84) as cursor:
-                for row in cursor:
-                    if row[0]:
-                        geometries.append(json.loads(row[0].JSON))
-            
-            if not geometries:
-                return None
-                
-            geojson_data = {
-                "type": "FeatureCollection",
-                "features": [{"type": "Feature", "geometry": g, "properties": {}} for g in geometries]
-            }
+            buffer_meters = float(buffer_meters)
+
+        ext = lyr.getExtent()
+        if not ext:
+            return None
+
+        # Verificar se o sistema da camada e projetado (unidade linear metros)
+        sr = ext.spatialReference
+        if sr and sr.type == 'Projected' and buffer_meters > 0:
+            minx = ext.XMin - buffer_meters
+            miny = ext.YMin - buffer_meters
+            maxx = ext.XMax + buffer_meters
+            maxy = ext.YMax + buffer_meters
+            ext_buffered = arcpy.Extent(minx, miny, maxx, maxy, sr)
+            ext_wgs = ext_buffered.projectAs(sr_wgs84)
+            minx_wgs, miny_wgs, maxx_wgs, maxy_wgs = ext_wgs.XMin, ext_wgs.YMin, ext_wgs.XMax, ext_wgs.YMax
+        else:
+            ext_wgs = ext.projectAs(sr_wgs84)
+            minx_wgs, miny_wgs, maxx_wgs, maxy_wgs = ext_wgs.XMin, ext_wgs.YMin, ext_wgs.XMax, ext_wgs.YMax
+            if buffer_meters > 0:
+                lat_c = (miny_wgs + maxy_wgs) / 2.0
+                d_lat = buffer_meters / 110574.0
+                cos_lat = max(0.01, math.cos(math.radians(lat_c)))
+                d_lon = buffer_meters / (111320.0 * cos_lat)
+                minx_wgs -= d_lon
+                miny_wgs -= d_lat
+                maxx_wgs += d_lon
+                maxy_wgs += d_lat
+
+        # Retangulo envolvente em GeoJSON Polygon estrito (padrao RFC 7946)
+        bbox_poly = [
+            [minx_wgs, miny_wgs],
+            [maxx_wgs, miny_wgs],
+            [maxx_wgs, maxy_wgs],
+            [minx_wgs, maxy_wgs],
+            [minx_wgs, miny_wgs]
+        ]
+        geojson_data = {
+            "type": "Polygon",
+            "coordinates": [bbox_poly]
+        }
 
         with open(out_geojson, "w") as f:
-            json.dump(geojson_data, f)
+            json.dump(geojson_data, f, indent=2)
         return out_geojson
     except Exception as e:
         print("Erro exportando camada para GeoJSON:", e)
@@ -571,7 +576,8 @@ def load_plugin_settings():
         'stretch_std_param': 2.0,
         'statistics_type': 'From Current Display Extent',
         'multicore_enabled': True,
-        'multicore_cores': 4
+        'multicore_cores': 4,
+        'aoi_buffer_meters': 0.0
     }
     try:
         if os.path.exists(SETTINGS_FILE):
@@ -1196,7 +1202,8 @@ def process_pending_arcmap_commands():
                 resp = {'reply_to': cmd_id, 'success': ok, 'message': msg}
             elif action == 'export_aoi':
                 tmp_geo = os.path.join(tempfile.gettempdir(), "arcgis_gee_aoi.geojson")
-                geo_file = export_layer_to_geojson(cmd['layer_name'], tmp_geo)
+                buf = cmd.get('buffer_meters')
+                geo_file = export_layer_to_geojson(cmd['layer_name'], tmp_geo, buffer_meters=buf)
                 resp = {'reply_to': cmd_id, 'success': bool(geo_file), 'file': geo_file}
             elif action == 'refresh_context':
                 ctx = export_arcmap_context()
