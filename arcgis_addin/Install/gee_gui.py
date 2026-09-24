@@ -417,7 +417,7 @@ class GEEAboutDialog(object):
 
         lbl_sub = tk.Label(
             title_box,
-            text=u"Google Earth Engine Explorer for ArcGIS Desktop 10.8 (ArcMap)  |  v1.4",
+            text=u"Google Earth Engine Explorer for ArcGIS Desktop 10.8 (ArcMap)  |  v1.5",
             font=("Segoe UI", 9, "italic"),
             fg="#566573"
         )
@@ -438,7 +438,7 @@ class GEEAboutDialog(object):
         info_frame.pack(fill=tk.X, pady=(0, 10))
 
         info_text = (
-            u"• Versão: v1.4 (Garantia Estrita de Qualidade Nativa 100%)\n"
+            u"• Versão: v1.5 (Garantia Estrita de Qualidade Nativa 100%)\n"
             u"• Organização: Coordenadoria de Geoprocessamento e Monitoramento Ambiental\n"
             u"  Secretaria de Estado de Meio Ambiente de Mato Grosso (CGMA / SEMA-MT)\n"
             u"• Desenvolvedor: Joberth Firmino Gambati\n"
@@ -721,7 +721,7 @@ class GEEUpdaterDialog(object):
         except Exception as e:
             messagebox.showerror(u"Erro ao Extrair ZIP", str(e), parent=self.top)
 
-CURRENT_VERSION = "1.4"
+CURRENT_VERSION = "1.5"
 
 SENSOR_METADATA = {
     'S2': {
@@ -861,7 +861,7 @@ def normalize_date(d_str):
 class GEEPluginWindow(object):
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title(u"CGMA ArcGEE Explorer (ArcGIS 10.8)  |  v1.4")
+        self.root.title(u"CGMA ArcGEE Explorer (ArcGIS 10.8)  |  v1.5")
         self.root.geometry("1100x740")
         self.root.minsize(960, 640)
         setup_window_icon(self.root)
@@ -1086,7 +1086,7 @@ class GEEPluginWindow(object):
         self.top_frame = tk.Frame(self.root, bg="#fcf3cf", padx=10, pady=6, relief=tk.GROOVE, bd=1)
         self.top_frame.pack(fill=tk.X, side=tk.TOP, padx=6, pady=4)
 
-        # Icone simples e nitido da aplicacao na barra superior (a esquerda de v1.4)
+        # Icone simples e nitido da aplicacao na barra superior (a esquerda de v1.5)
         self.top_icon_img = get_tk_image("icon24") or get_tk_image("icon20") or get_tk_image("icon16")
         if self.top_icon_img:
             self.lbl_top_ico = tk.Label(self.top_frame, image=self.top_icon_img, bg="#fcf3cf", bd=0)
@@ -1095,7 +1095,7 @@ class GEEPluginWindow(object):
         # Badge de Versao bem visivel
         self.lbl_v_badge = tk.Label(
             self.top_frame,
-            text=u" v1.4 ",
+            text=u" v1.5 ",
             font=("Segoe UI", 9, "bold"),
             bg="#1b4f72",
             fg="#ffffff",
@@ -1420,7 +1420,7 @@ class GEEPluginWindow(object):
         self.btn_mosaic_toc.pack(side=tk.LEFT)
 
         # 3. Barra de Status Inferior com Progresso
-        self.lbl_progress = ttk.Label(self.root, text=u"Pronto. (CGMA ArcGEE Explorer v1.4 - Resolução Nativa Estrita 100%)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
+        self.lbl_progress = ttk.Label(self.root, text=u"Pronto. (CGMA ArcGEE Explorer v1.5 - Resolução Nativa Estrita 100%)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
         self.lbl_progress.pack(fill=tk.X, side=tk.BOTTOM)
 
     def update_map_scale_display(self):

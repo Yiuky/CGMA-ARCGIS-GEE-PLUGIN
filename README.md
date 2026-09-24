@@ -4,7 +4,7 @@
 [![Google Earth Engine](https://img.shields.io/badge/Google%20Earth%20Engine-API-green.svg)](https://earthengine.google.com/)
 [![Python](https://img.shields.io/badge/Python-2.7%20%7C%203.9+-yellow.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Versão-v1.4%20Estável-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/Versão-v1.5%20Estável-brightgreen.svg)]()
 [![Repository](https://img.shields.io/badge/GitHub-arcgis--google--earth--engine--explorer-blue)](https://github.com/Yiuky/arcgis-google-earth-engine-explorer)
 
 > **Ferramenta oficial e Add-In para ArcGIS Desktop 10.8 / 10.8.2 (ArcMap) com integração direta ao Google Earth Engine (GEE).**  

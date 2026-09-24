@@ -7,7 +7,7 @@ Copy-Item "arcgis_addin\Install\*" $cacheDir -Recurse -Force
 Get-ChildItem -Path $cacheDir -Filter "*.pyc" -Recurse | Remove-Item -Force -ErrorAction SilentlyContinue
 Stop-Process -Name pythonw -Force -ErrorAction SilentlyContinue
 
-$found = Get-Content "$cacheDir\gee_gui.py" | Select-String "v1.4"
+$found = Get-Content "$cacheDir\gee_gui.py" | Select-String "v1.5"
 Write-Output "Found in cache: $found"
 
 # Verify pure group template in cache
@@ -15,4 +15,4 @@ $p = "$cacheDir\empty_group_template.lyr"
 $len = (Get-Item $p).Length
 Write-Output "empty_group_template.lyr size: $len bytes"
 
-Write-Output "DEPLOY_COMPLETE_V14"
+Write-Output "DEPLOY_COMPLETE_V15"

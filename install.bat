@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-title Instalador - CGMA ArcGEE Explorer v1.4
+title Instalador - CGMA ArcGEE Explorer v1.5
 cls
 echo ======================================================================
-echo          CGMA ARCGEE EXPLORER - INSTALADOR AUTOMATIZADO (v1.4)
+echo          CGMA ARCGEE EXPLORER - INSTALADOR AUTOMATIZADO (v1.5)
 echo         Google Earth Engine integrado ao ArcGIS Desktop 10.8.2
 echo ======================================================================
 echo.
