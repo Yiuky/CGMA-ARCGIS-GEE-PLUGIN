@@ -267,7 +267,7 @@ def normalize_date(d_str):
 class GEEPluginWindow(object):
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title(u"Google Earth Engine - Seletor Multibanda & Índices (ArcGIS 10.8)  |  v1.3")
+        self.root.title(u"Google Earth Engine - Seletor Multibanda & Índices (ArcGIS 10.8)  |  v1.4")
         self.root.geometry("1100x740")
         self.root.minsize(960, 640)
 
@@ -384,7 +384,7 @@ class GEEPluginWindow(object):
         # Badge de Versao bem visivel
         self.lbl_v_badge = tk.Label(
             self.top_frame,
-            text=u" v1.3 ",
+            text=u" v1.4 ",
             font=("Segoe UI", 9, "bold"),
             bg="#1b4f72",
             fg="#ffffff",
@@ -518,8 +518,8 @@ class GEEPluginWindow(object):
         sep_loc = ttk.Separator(left_frame, orient=tk.HORIZONTAL)
         sep_loc.grid(row=11, column=0, columnspan=2, sticky=tk.EW, pady=6)
 
-        # Filtro Espacial
-        ttk.Label(left_frame, text=u"Filtro de Localizacao:", font=("Segoe UI", 9, "bold")).grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=2)
+        # Filtro Espacial (Apenas Extensao da Tela e Camada Vetorial AOI para garantir 100% de qualidade nativa)
+        ttk.Label(left_frame, text=u"Filtro de Localizacao (Resolução Nativa 100%):", font=("Segoe UI", 9, "bold")).grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=2)
 
         self.var_spatial_type = tk.StringVar(value="extent")
 
@@ -532,27 +532,9 @@ class GEEPluginWindow(object):
         self.cbo_layers = ttk.Combobox(left_frame, state="readonly", width=18)
         self.cbo_layers.grid(row=14, column=1, sticky=tk.EW, padx=2)
 
-        rb_pr = ttk.Radiobutton(left_frame, text="Orbita/Ponto (Landsat):", variable=self.var_spatial_type, value="path_row")
-        rb_pr.grid(row=15, column=0, sticky=tk.W, pady=2)
-
-        frame_pr = ttk.Frame(left_frame)
-        frame_pr.grid(row=15, column=1, sticky=tk.E)
-        ttk.Label(frame_pr, text="P:").pack(side=tk.LEFT)
-        self.txt_path = ttk.Entry(frame_pr, width=5)
-        self.txt_path.pack(side=tk.LEFT, padx=1)
-        ttk.Label(frame_pr, text="R:").pack(side=tk.LEFT, padx=(3, 0))
-        self.txt_row = ttk.Entry(frame_pr, width=5)
-        self.txt_row.pack(side=tk.LEFT, padx=1)
-
-        rb_mgrs = ttk.Radiobutton(left_frame, text="Tile MGRS (Sentinel-2):", variable=self.var_spatial_type, value="mgrs")
-        rb_mgrs.grid(row=16, column=0, sticky=tk.W, pady=2)
-
-        self.txt_mgrs = ttk.Entry(left_frame, width=16)
-        self.txt_mgrs.grid(row=16, column=1, sticky=tk.E)
-
         # Botao de Busca
         self.btn_search = ttk.Button(left_frame, text="[ Buscar Imagens no GEE ]", style="Primary.TButton", command=self.on_search_clicked)
-        self.btn_search.grid(row=17, column=0, columnspan=2, sticky=tk.EW, pady=12)
+        self.btn_search.grid(row=15, column=0, columnspan=2, sticky=tk.EW, pady=12)
 
         # --- PAINEL DIREITO: TABELA MULTISELECAO E MINIATURA ---
         right_frame = ttk.Frame(middle_paned)
@@ -674,7 +656,7 @@ class GEEPluginWindow(object):
         self.btn_mosaic_toc.pack(side=tk.LEFT)
 
         # 3. Barra de Status Inferior com Progresso
-        self.lbl_progress = ttk.Label(self.root, text=u"Pronto. (v1.3 - Índices Espectrais, DD/MM/AAAA & Busca Orbital)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
+        self.lbl_progress = ttk.Label(self.root, text=u"Pronto. (v1.4 - Resolução Nativa Estrita 100% & Recorte por AOI/Tela)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
         self.lbl_progress.pack(fill=tk.X, side=tk.BOTTOM)
 
     def update_map_scale_display(self):
@@ -923,19 +905,11 @@ class GEEPluginWindow(object):
         st = self.var_spatial_type.get()
         bbox = None
         geojson_file = None
-        path = None
-        row = None
-        mgrs = None
 
         if st == "extent":
             bbox = self.arcmap_context.get('bbox')
             if not bbox:
                 bbox = [-61.64, -18.04, -50.22, -7.35]
-        elif st == "path_row":
-            path = self.txt_path.get().strip()
-            row = self.txt_row.get().strip()
-        elif st == "mgrs":
-            mgrs = self.txt_mgrs.get().strip()
 
         sensor = self.get_selected_sensor_code()
         s_date = normalize_date(self.txt_start_date.get())
@@ -962,9 +936,6 @@ class GEEPluginWindow(object):
                     end_date=e_date,
                     bbox=bbox,
                     geojson_file=g_file,
-                    path=path,
-                    row=row,
-                    mgrs=mgrs,
                     max_images=100
                 )
 
@@ -1109,21 +1080,22 @@ class GEEPluginWindow(object):
     def validate_scale_and_get_bbox(self):
         """Valida se a escala do ArcMap esta dentro de 1:500.000 para busca por extensao.
         Retorna (ok, bbox, auto_zoom):
-        - Para Orbita/Ponto ou Tile MGRS: nao limita escala, bbox=None (cena completa) e auto_zoom=True.
         - Para Camada (AOI): exporta geojson, bbox=None e auto_zoom=True.
         - Para Extensao da Tela: valida escala <= 1:500k, bbox da tela e auto_zoom=False.
         """
         st = self.var_spatial_type.get()
 
-        if st in ["path_row", "mgrs"]:
-            return True, None, True
-
         if st == "layer":
             lyr_name = self.cbo_layers.get()
-            if lyr_name and lyr_name != "Nenhuma camada encontrada":
-                rep = gee_bridge.send_arcmap_command({'action': 'export_aoi', 'layer_name': lyr_name}, timeout=10)
-                if rep.get('success'):
-                    self.current_aoi_file = rep.get('file')
+            if not lyr_name or lyr_name == "Nenhuma camada encontrada":
+                messagebox.showwarning(u"Camada Inválida", u"Selecione uma camada vetorial (AOI) válida no ArcMap.", parent=self.root)
+                return False, None, False
+            rep = gee_bridge.send_arcmap_command({'action': 'export_aoi', 'layer_name': lyr_name}, timeout=10)
+            if rep.get('success'):
+                self.current_aoi_file = rep.get('file')
+            else:
+                messagebox.showerror(u"Erro AOI", u"Falha ao exportar limite vetorial da camada '%s': %s" % (lyr_name, rep.get('message', '')), parent=self.root)
+                return False, None, False
             return True, None, True
 
         # st == "extent"
@@ -1246,7 +1218,8 @@ class GEEPluginWindow(object):
         comp = self.get_selected_composition_code()
         custom_bands = self.txt_custom_bands.get().strip() or None
         load_mode = self.var_load_mode.get() if hasattr(self, 'var_load_mode') else 'multiband'
-        geojson_file = getattr(self, 'current_aoi_file', None)
+        st = self.var_spatial_type.get()
+        geojson_file = getattr(self, 'current_aoi_file', None) if (st == "layer") else None
 
         # Obter tamanho do pixel / resolucao definida pelo usuario
         pixel_size = None
@@ -1257,6 +1230,64 @@ class GEEPluginWindow(object):
                     pixel_size = float(raw_px)
                 except Exception:
                     pixel_size = None
+
+        # Validacao preventiva de tamanho para resolucao nativa estrita (100% de qualidade)
+        if st == "extent" and bbox:
+            import math
+            req_scale = pixel_size
+            if req_scale is None or req_scale <= 0:
+                if sensor == "S2":
+                    req_scale = 10.0
+                elif sensor in ["L8", "L7", "L5", "L4"]:
+                    req_scale = 30.0
+                elif sensor in ["L1", "L2", "L3"]:
+                    req_scale = 60.0
+                else:
+                    req_scale = 30.0
+
+            # Determinar numero de bandas estimado
+            comp_is_index = comp in ['NDVI', 'NDWI', 'NDMI', 'NBR', 'EVI', 'SAVI', 'CUSTOM_MATH']
+            if comp_is_index:
+                n_b = 1
+                bpp = 4  # Float32
+            elif load_mode == 'multiband':
+                if custom_bands:
+                    n_b = len([b for b in custom_bands.split(',') if b.strip()])
+                elif comp == 'MB_10':
+                    n_b = 10
+                elif comp == 'MB_12':
+                    n_b = 12
+                elif comp == 'MB_6':
+                    n_b = 6
+                else:
+                    n_b = 3
+                bpp = 2 * n_b  # Int16 por banda
+            else:
+                n_b = 3
+                bpp = 3  # RGB 8-bit
+
+            minx, miny, maxx, maxy = bbox
+            lat_center = (miny + maxy) / 2.0
+            lat_rad = math.radians(lat_center)
+            width_m = abs(maxx - minx) * 111320.0 * math.cos(lat_rad)
+            height_m = abs(maxy - miny) * 110540.0
+            area_m2 = max(width_m * height_m, 1000.0)
+            est_bytes = (area_m2 / (req_scale * req_scale)) * bpp
+            target_max_bytes = 48 * 1024 * 1024
+
+            if est_bytes > target_max_bytes * 1.05:
+                est_mb = round(est_bytes / (1024.0 * 1024.0), 1)
+                area_km2 = round(area_m2 / 1000000.0, 1)
+                messagebox.showerror(
+                    u"Qualidade Nativa Estrita (Limite Excedido)",
+                    u"A extensão atual da tela (%.0f km²) requer aproximadamente %.1f MB para a resolução nativa de %.0fm com %d banda(s), excedendo o limite de 48 MB do Google Earth Engine.\n\n"
+                    u"Para garantir 100%% da nitidez e qualidade original sem qualquer perda por reamostragem, o download foi impedido.\n\n"
+                    u"Solução: Aumente o zoom no ArcMap (escala <= 1:250.000 para Sentinel-2 ou selecione menos bandas) ou utilize uma camada vetorial (AOI) menor." % (
+                        area_km2, est_mb, req_scale, n_b
+                    ),
+                    parent=self.root
+                )
+                return
 
         # Obter informacao do Grupo na thread principal
         group_name = None

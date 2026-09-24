@@ -1,12 +1,12 @@
-# CGMA ArcGIS GEE Plugin (v1.3)
+# CGMA ArcGIS GEE Plugin (v1.4)
 
 [![ArcGIS](https://img.shields.io/badge/ArcGIS%20Desktop-10.8%20%7C%2010.8.2-blue.svg)](https://www.esri.com/)
 [![Google Earth Engine](https://img.shields.io/badge/Google%20Earth%20Engine-API-green.svg)](https://earthengine.google.com/)
 [![Python](https://img.shields.io/badge/Python-2.7%20%7C%203.9+-yellow.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Versão-v1.3%20Estável-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/Versão-v1.4%20Estável-brightgreen.svg)]()
 
-Plugin avançado para o **ArcGIS Desktop 10.8 / 10.8.2 (ArcMap)** que integra diretamente a infraestrutura do **Google Earth Engine (GEE)** ao ambiente SIG da Esri. Permite pesquisar, filtrar, pré-visualizar e descarregar imagens de satélite (**Sentinel-2** e **Landsats 1 a 8**), índices espectrais e matemática de bandas diretamente na Tabela de Conteúdos (**TOC**) do ArcMap, preservando todas as bandas espectrais brutas ou aplicando composições sob medida.
+Plugin avançado para o **ArcGIS Desktop 10.8 / 10.8.2 (ArcMap)** que integra diretamente a infraestrutura do **Google Earth Engine (GEE)** ao ambiente SIG da Esri. Permite pesquisar, filtrar, pré-visualizar e descarregar imagens de satélite (**Sentinel-2** e **Landsats 1 a 8**), índices espectrais e matemática de bandas diretamente na Tabela de Conteúdos (**TOC**) do ArcMap com **garantia estrita de 100% da resolução nativa** (sem reamostragem ou degradação de qualidade).
 
 Desenvolvido para operações de geoprocessamento da **CGMA / SEMA-MT**.
 
@@ -14,16 +14,18 @@ Desenvolvido para operações de geoprocessamento da **CGMA / SEMA-MT**.
 
 ## 🌟 Principais Recursos e Diferenciais
 
+* **🎯 Garantia Estrita de Qualidade Nativa 100% (Novidade v1.4):**
+  * **Zero degradação ou reamostragem:** O plugin garante que nenhum download sofra redução silenciosa de qualidade (preservando estritamente os 10m nativos no Sentinel-2 e os 30m no Landsat).
+  * **Foco em Áreas Reais de Estudo:** Recorte espacial focado exclusivamente na **Extensão da Tela do ArcMap** e em **Camadas Vetoriais (AOI)** do TOC.
+  * **Proteção Preventiva de Limite (48 MB GEE):** Se uma extensão ou camada vetorial selecionada demandar um volume superior ao teto de 48 MB do GEE na resolução nativa, o plugin **cancela o download e instrui o usuário** a aproximar o zoom (ex: <= 1:250.000 para Sentinel-2) ou refinar a AOI, eliminando qualquer risco de receber imagens com resolução rebaixada.
 * **⚡ Arquitetura Assíncrona e Desacoplada (IPC Seguro):**
   * A interface gráfica opera em processo próprio (`pythonw.exe`), comunicando-se com o ArcMap via IPC estruturado (JSON com trava de reentrância atômica).
   * **Zero risco de travamento ou congelamento da UI do ArcMap** durante buscas ou downloads pesados.
-* **🌱 Índices Espectrais e Matemática de Bandas Integrada (Novidade v1.3):**
+* **🌱 Índices Espectrais e Matemática de Bandas Integrada:**
   * Cálculo em tempo real diretamente no Earth Engine de índices como **NDVI**, **NDWI**, **NDMI**, **NBR (Queimadas)**, **EVI** e **SAVI**.
   * **Fórmula Personalizada (Band Math):** Permite inserir expressões matemáticas customizadas (ex: `(B8-B4)/(B8+B4)` ou `(SR_B5-SR_B4)/(SR_B5+SR_B4)`), descarregando rasters Float32 monocamada com paleta de cores automática na miniatura e estatísticas calculadas no ArcMap.
 * **📅 Entrada Flexível de Datas (Padrão Brasileiro DD/MM/AAAA):**
   * Campo de busca com suporte nativo a `DD/MM/AAAA` (ex: `15/08/2024`) bem como formato ISO `AAAA-MM-DD`.
-* **🛰️ Busca e Carga Orbital Completa (Órbita/Ponto e Tile MGRS):**
-  * Pesquisa por **Órbita/Ponto** (Landsat WRS Path/Row) ou **Tile MGRS** (Sentinel-2) com download íntegro da cena/tile completa (sem recortar pela extensão da tela do mapa) e **auto-zoom** automático para a área ao ser adicionada no TOC.
 * **🌈 Suporte Multibanda Completo (Preservação de Todas as Bandas):**
   * Baixa todas as bandas espectrais nativas (ex: 10 bandas no Sentinel-2, 7 bandas no Landsat 8/7/5) em um único arquivo GeoTIFF 32/16-bit.
   * Permite **alterar as bandas RGB diretamente no ArcMap TOC** em tempo real sem precisar refazer download.
@@ -145,11 +147,10 @@ Se preferir instalar manualmente ou sem scripts:
 1. **Satélite / Sensor:** Escolha Sentinel-2, Landsat 8, 7, 5, etc.
 2. **Composição / Bandas:** Escolha entre as composições prontas (Cor Natural, Infravermelho, Falsa Cor, SWIR, etc.) ou selecione *Composição Customizada* para escolher bandas manualmente.
 3. **Período e Nuvens:** Defina a data inicial, data final e porcentagem máxima de cobertura de nuvens.
-4. **Área de Interesse (Filtro Espacial):**
-   * *Extensão da Tela do ArcMap:* Usa automaticamente a visualização corrente do mapa (respeitando o limite de segurança de escala 1:500.000).
-   * *Camada Vetorial do ArcMap (AOI):* Selecione um Shapefile ou Feature Class existente na sua TOC para recortar exatamente a geometria de interesse.
-   * *Órbita/Ponto (Path/Row) ou Tile MGRS:* Filtros de grade oficiais.
-5. **Tamanho do Pixel (m):** Ajuste a resolução espacial desejada (padrão: 10m para S2, 30m para Landsat).
+4. **Área de Interesse (Filtro Espacial - Resolução Nativa 100%):**
+   * *Extensão da Tela do ArcMap:* Usa automaticamente a visualização corrente do mapa (com validação de escala <= 1:500.000 e checagem preventiva de tamanho).
+   * *Camada Vetorial (AOI):* Selecione qualquer camada vetorial (Shapefile ou Feature Class) presente no TOC do ArcMap para recortar e descarregar exatamente a geometria do seu polígono de estudo.
+5. **Tamanho do Pixel (m):** Ajuste a resolução espacial desejada (padrão nativo: 10m para Sentinel-2, 30m para Landsat).
 6. **Configurações de Stretch e Multicore:** Clique em **`[ Configurações ]`** para personalizar o número de cores da CPU e o tipo de realce de contraste (*Standard Deviation*, *Dynamic Range Adjustment*, etc.).
 
 ### 4. Buscar e Carregar Cenas
@@ -202,15 +203,15 @@ CGMA-ARCGIS-GEE-PLUGIN/
 
 ### 1. "Aviso: A escala atual do ArcMap é maior que 1:500.000"
 * **Motivo:** O Google Earth Engine possui limites de requisição por recorte para evitar sobrecarga. Escalas muito distantes cobrem áreas imensas.
-* **Solução:** Dê zoom em sua área de estudo até que a escala esteja abaixo de 1:500.000 (ex: 1:250.000 ou 1:100.000) ou clique no botão **`[ Ajustar Escala ]`** na interface do plugin.
+* **Solução:** Dê zoom em sua área de estudo até que a escala esteja abaixo de 1:500.000 (ex: 1:250.000 ou 1:100.000) ou clique no botão **`[ Ajustar 1:500.000 ]`** na barra superior da interface.
 
 ### 2. "Erro ao adicionar camada ao TOC: maximum recursion depth exceeded"
-* **Status:** **Totalmente corrigido na versão 1.2**.
+* **Status:** **Totalmente corrigido**.
 * A biblioteca `gee_bridge.py` agora conta com guarda estrita contra reentrância (`_is_processing_cmd`) e exclusão atômica e imediata dos arquivos de comando IPC.
 
 ### 3. As bandas na Tabela de Conteúdos não mostram todas as bandas
 * **Status:** O plugin exporta e carrega o GeoTIFF completo contendo todas as bandas nativas (`Band_1`, `Band_2`, `Band_3`, `Band_4`, ..., `Band_10`).
-* Para alterar a combinação exibida, você pode usar o botão **`[ Aplicar Composição no TOC ]`** na interface ou abrir as propriedades da camada no ArcMap (*Layer Properties > Symbology > Red / Green / Blue*).
+* Para alterar a combinação exibida, você pode usar o botão **`[ Aplicar Composição ]`** na interface ou abrir as propriedades da camada no ArcMap (*Layer Properties > Symbology > Red / Green / Blue*).
 
 ### 4. Como trocar o ambiente Python 3 usado pelo Plugin?
 * O plugin detecta automaticamente o Python 3 nas pastas padrão ou no QGIS.
@@ -218,6 +219,11 @@ CGMA-ARCGIS-GEE-PLUGIN/
   ```cmd
   setx GEE_PYTHON3 "C:\Caminho\Para\Seu\Python3\python.exe"
   ```
+
+### 5. "Qualidade Nativa Estrita (Limite Excedido): A extensão atual da tela requer aproximadamente X MB (limite: 48 MB)"
+* **Motivo:** O endpoint de download direto do Google Earth Engine possui um teto de 48 MB por requisição. Anteriormente, softwares de terceiros reamostravam a imagem silenciosamente (ex: de 10m para 40m ou 80m), degradando a resolução do raster.
+* **Comportamento v1.4:** **Zero perda de qualidade!** O plugin recusa-se a degradar os dados do usuário. Se a área na resolução nativa (10m Sentinel-2 / 30m Landsat) for maior que 48 MB, ele cancela o download preventivamente e avisa o usuário.
+* **Solução:** Aumente o zoom no ArcMap para uma escala mais próxima (ex: <= 1:250.000 para Sentinel-2 ou selecione uma composição com menos bandas) ou utilize um Shapefile/Feature Class de AOI como filtro espacial.
 
 ---
 

@@ -360,25 +360,17 @@ def search_collection(sensor, start_date, end_date, bbox=None, geometry=None, pa
                 pass
         coll = coll.filterDate(s_date, end_dt_str)
 
-    # Filtro espacial
+    # Filtro espacial estrito: Extensao da tela (bbox) ou Camada Vetorial (geometry)
     aoi = None
     if geometry:
         aoi = ee.Geometry(geometry)
     elif bbox:
         # [minx, miny, maxx, maxy]
         aoi = ee.Geometry.BBox(bbox[0], bbox[1], bbox[2], bbox[3])
+    else:
+        raise ValueError(u"Filtro espacial obrigatório: defina a extensão da tela do ArcMap ou selecione uma camada vetorial (AOI).")
 
-    if aoi:
-        coll = coll.filterBounds(aoi)
-
-    # Filtros de orbita/ponto ou Tile
-    if sensor == 'S2' and mgrs:
-        coll = coll.filter(ee.Filter.eq('MGRS_TILE', str(mgrs).strip().upper()))
-    elif sensor != 'S2':
-        if path is not None and str(path).strip() != '':
-            coll = coll.filter(ee.Filter.eq('WRS_PATH', int(path)))
-        if row is not None and str(row).strip() != '':
-            coll = coll.filter(ee.Filter.eq('WRS_ROW', int(row)))
+    coll = coll.filterBounds(aoi)
 
     # Ordenar por data (mais recentes primeiro) e limitar
     coll = coll.sort('system:time_start', False).limit(max_images)
@@ -442,8 +434,9 @@ def get_thumbnail_url(image_id, sensor, composition_code, dimensions=350, bbox=N
 
 def compute_safe_scale(region_bbox, num_bands, is_multiband, requested_scale=None, sensor=None):
     """
-    Calcula resolucao (scale em metros) garantindo que o download
-    fique dentro do limite de 48 MB do Google Earth Engine (~42 MB de seguranca).
+    Verifica se a resolucao nativa solicitada cabe no limite de 48 MB do GEE.
+    REGRA RIGOROSA: NUNCA diminuir qualidade/reamostrar silenciosamente!
+    Se a resolucao nativa estourar o limite de 48 MB, lanca ValueError para impedir o download com perda de qualidade.
     """
     import math
     req = None
@@ -472,15 +465,26 @@ def compute_safe_scale(region_bbox, num_bands, is_multiband, requested_scale=Non
 
     width_m = abs(maxx - minx) * 111320.0 * math.cos(lat_rad)
     height_m = abs(maxy - miny) * 110540.0
-    area_m2 = max(width_m * height_m, 100000.0)
+    area_m2 = max(width_m * height_m, 1000.0)
 
     bytes_per_pixel = 4 if (num_bands == 1 and not is_multiband) else ((2 * num_bands) if is_multiband else 3)
-    target_max_bytes = 42 * 1024 * 1024  # 42 MB de limite maximo
+    target_max_bytes = 48 * 1024 * 1024  # 48 MB limite maximo do GEE
     max_pixels = float(target_max_bytes) / float(bytes_per_pixel)
 
     min_safe_scale = math.sqrt(area_m2 / max_pixels)
 
-    return max(req, math.ceil(min_safe_scale))
+    if min_safe_scale > req * 1.05:  # Tolerancia de 5%
+        area_km2 = area_m2 / 1000000.0
+        est_mb = round((area_m2 / (req * req) * bytes_per_pixel) / (1024.0 * 1024.0), 1)
+        raise ValueError(
+            u"A área selecionada (%.0f km²) excede o limite do Google Earth Engine para a resolução nativa de %.1fm com %d bandas (tamanho estimado: %.1f MB, limite: 48 MB).\n\n"
+            u"Para garantir 100%% da qualidade da imagem sem qualquer perda por reamostragem, o download foi cancelado.\n\n"
+            u"Solução: Aproxime o zoom no ArcMap (escala <= 1:250.000) ou utilize uma camada vetorial (AOI) menor." % (
+                area_km2, req, num_bands, est_mb
+            )
+        )
+
+    return req
 
 def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, load_mode='multiband', aoi_geometry=None, bbox=None, out_tif_path=None, scale=None, crs='EPSG:4674'):
     import math
@@ -565,16 +569,7 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
         region = ee.Geometry.BBox(bbox[0], bbox[1], bbox[2], bbox[3])
         calc_bbox = bbox
     else:
-        region = img.geometry().bounds()
-        try:
-            b_info = region.getInfo()
-            c = b_info.get('coordinates', [[]])[0]
-            if c:
-                xs = [p[0] for p in c]
-                ys = [p[1] for p in c]
-                calc_bbox = [min(xs), min(ys), max(xs), max(ys)]
-        except Exception:
-            calc_bbox = [-56.0, -14.0, -54.9, -12.9]
+        raise ValueError(u"Filtro espacial obrigatório: defina a extensão da tela do mapa ou selecione uma camada vetorial (AOI).")
 
     safe_scale = compute_safe_scale(calc_bbox, len(bands), is_multi, requested_scale=scale, sensor=sensor)
 
@@ -586,26 +581,26 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
     }
 
     url = None
-    last_err = None
-    for attempt in range(4):
-        try:
-            url = export_img.getDownloadURL(download_params)
-            break
-        except Exception as e:
-            err_str = str(e)
-            last_err = err_str
-            m = re.search(r'Total request size \((\d+) bytes\) must be less than or equal to (\d+) bytes', err_str)
-            if m:
-                req_size = float(m.group(1))
-                allowed_size = float(m.group(2))
-                factor = math.sqrt(req_size / (allowed_size * 0.80))
-                download_params['scale'] = int(math.ceil(download_params['scale'] * factor))
-                continue
-            else:
-                raise e
+    try:
+        url = export_img.getDownloadURL(download_params)
+    except Exception as e:
+        err_str = str(e)
+        m = re.search(r'Total request size \((\d+) bytes\) must be less than or equal to (\d+) bytes', err_str)
+        if m:
+            req_mb = round(float(m.group(1)) / (1024.0 * 1024.0), 1)
+            limit_mb = round(float(m.group(2)) / (1024.0 * 1024.0), 1)
+            raise ValueError(
+                u"O volume da área solicitada (%.1f MB) excede o limite de transferência do Google Earth Engine (%.1f MB) na resolução nativa de %.1fm com %d bandas.\n\n"
+                u"Para garantir 100%% da nitidez e qualidade original sem qualquer perda, o download não foi realizado.\n\n"
+                u"Por favor, aumente o zoom no ArcMap (escala <= 1:250.000) ou utilize uma camada vetorial (AOI) menor." % (
+                    req_mb, limit_mb, safe_scale, len(bands)
+                )
+            )
+        else:
+            raise e
 
     if not url:
-        raise RuntimeError("Falha ao obter URL de download do GEE: " + str(last_err))
+        raise RuntimeError("Falha ao obter URL de download do GEE.")
 
     if not out_tif_path:
         first_name = cleaned_ids[0].split('/')[-1]
