@@ -4,15 +4,11 @@ $cacheDir = "C:\Users\joberthgambati\AppData\Local\ESRI\Desktop10.8\AssemblyCach
 
 Copy-Item $addinSrc $addinDest -Force
 Copy-Item "arcgis_addin\Install\*" $cacheDir -Recurse -Force
+Copy-Item "arcgis_addin\config.xml" $cacheDir -Force
 Get-ChildItem -Path $cacheDir -Filter "*.pyc" -Recurse | Remove-Item -Force -ErrorAction SilentlyContinue
 Stop-Process -Name pythonw -Force -ErrorAction SilentlyContinue
 
-$found = Get-Content "$cacheDir\gee_gui.py" | Select-String "v1.5"
-Write-Output "Found in cache: $found"
+& "C:\Python27\ArcGIS10.8\python.exe" -c "import py_compile, os; cache=r'$cacheDir'; py_compile.compile(os.path.join(cache, 'gee_selector_addin.py')); py_compile.compile(os.path.join(cache, 'gee_bridge.py')); py_compile.compile(os.path.join(cache, 'gee_gui.py')); print('Cache pyc compiled successfully!')"
 
-# Verify pure group template in cache
-$p = "$cacheDir\empty_group_template.lyr"
-$len = (Get-Item $p).Length
-Write-Output "empty_group_template.lyr size: $len bytes"
+Write-Output "DEPLOY_COMPLETE"
 
-Write-Output "DEPLOY_COMPLETE_V15"

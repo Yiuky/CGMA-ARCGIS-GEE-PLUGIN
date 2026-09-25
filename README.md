@@ -13,7 +13,7 @@
   <a href="https://www.esri.com/"><img src="https://img.shields.io/badge/ArcGIS%20Desktop-10.8%20%7C%2010.8.2-0079C1.svg?logo=esri&logoColor=white" alt="ArcGIS Desktop"></a>
   <a href="https://earthengine.google.com/"><img src="https://img.shields.io/badge/Google%20Earth%20Engine-API-4285F4.svg?logo=googleearthengine&logoColor=white" alt="Google Earth Engine"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-2.7%20%7C%203.9+-3776AB.svg?logo=python&logoColor=white" alt="Python Version"></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Versão-v1.6%20Estável-28A745.svg" alt="Versão v1.6"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Versão-v1.7%20Estável-28A745.svg" alt="Versão v1.7"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License MIT"></a>
   <a href="https://github.com/Yiuky/arcgis-google-earth-engine-explorer"><img src="https://img.shields.io/badge/GitHub-arcgis--google--earth--engine--explorer-181717.svg?logo=github&logoColor=white" alt="GitHub Repository"></a>
 </p>
@@ -46,7 +46,13 @@ Com o ArcGEE Explorer, o operador filtra cenas orbitais no tempo e no espaço, i
 
 ## 🌟 Principais Recursos e Diferenciais
 
-* **🚀 Particionamento Espacial Inteligente (> 48 MB) e Qualidade Nativa 100% (Novidade v1.6):**
+* **🎨 Simbologia RGB Nativa e Seleção Estrita de Bandas (Novidade v1.7):**
+  * **Renderização RGB Composite Imediata:** Ao carregar no ArcMap, rasters com 3 bandas utilizam o renderizador nativo `IRasterRGBRenderer`, abrindo os canais Red, Green e Blue no TOC com contraste e estatísticas dinâmicas (DRA) perfeitas.
+  * **Seleção Estrita de Bandas:** Ao escolher uma composição (ex: `1182 - AGRICULTURA`), o plugin exporta estritamente as bandas selecionadas (B11, B8, B2), sem sobrecarregar o arquivo com bandas desnecessárias.
+  * **Controle de Visibilidade no TOC:** Opção em Configurações para carregar novas camadas ativadas (`[x]`) ou desativadas (`[ ]`), ideal para baixar lotes pesados sem travar a renderização inicial da tela.
+  * **Janela de Configurações Redesenhada:** Interface moderna com Abas (`ttk.Notebook`), botões de salvar fixados na base e suporte total à vírgula decimal regional.
+
+* **🚀 Particionamento Espacial Inteligente (> 48 MB) e Qualidade Nativa 100% (v1.6):**
   * **Downloads de Áreas Extensas até 1:500.000:** Requisições que superam o limite de 48 MB do Earth Engine são automaticamente particionadas em uma grade dinâmica de quadrantes seguros, baixadas em paralelo multithread e mescladas em um único GeoTIFF contínuo via GDAL (com compressão LZW e BigTIFF).
   * **Zero degradação silenciosa:** Proibição absoluta de reamostragem espacial ou perda de nitidez. Os dados do Sentinel-2 preservam estritamente seus 10 metros e o Landsat seus 30 metros em toda a tela de trabalho.
   * **Micro-sobreposição (*Overlap*) de 1.5 pixels:** Bordas internas sobrepostas garantem zero costuras, frestas ou descontinuidades visuais no raster final.

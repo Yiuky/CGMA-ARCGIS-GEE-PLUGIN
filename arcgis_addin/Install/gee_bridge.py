@@ -9,6 +9,8 @@ import json
 import time
 import tempfile
 import subprocess
+import threading
+import uuid
 
 try:
     import arcpy
@@ -87,8 +89,10 @@ COMPOSITIONS = {
         '753': {'label': 'NATURAL COM REMOCAO ATMOSFERICA - 753', 'bands': ['SR_B7', 'SR_B5', 'SR_B3']},
         '754': {'label': 'INFRAVERMELHO ONDA CURTA - 754', 'bands': ['SR_B7', 'SR_B5', 'SR_B4']},
         '654': {'label': 'ANALISE DA VEGETACAO - 654', 'bands': ['SR_B6', 'SR_B5', 'SR_B4']},
-        'MB_7': {'label': 'MULTIBANDA - 7 BANDAS (SR_B1 a SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True},
-        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B2 a SR_B7)', 'bands': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True},
+        'MB_8': {'label': 'MULTIBANDA - 8 BANDAS (SR_B1 a SR_B7 + ST_B10 Termica)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7', 'ST_B10'], 'multiband': True},
+        'MB_7': {'label': 'MULTIBANDA - 7 BANDAS OPTICAS (SR_B1 a SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True},
+        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS PRINCIPAIS (SR_B2 a SR_B7)', 'bands': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True},
+        '10':   {'label': 'TERMICA - BANDA 10 (Temperatura de Superficie em C)', 'bands': ['ST_B10'], 'is_index': True},
         'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['SR_B5', 'SR_B4'], 'is_index': True},
         'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['SR_B3', 'SR_B5'], 'is_index': True},
         'NDMI': {'label': 'INDICE - NDMI (Umidade: NIR-SWIR1)', 'bands': ['SR_B5', 'SR_B6'], 'is_index': True},
@@ -108,7 +112,9 @@ COMPOSITIONS = {
         '742': {'label': 'NATURAL COM REMOCAO ATMOSFERICA - 742', 'bands': ['SR_B7', 'SR_B4', 'SR_B2']},
         '743': {'label': 'INFRAVERMELHO ONDA CURTA - 743', 'bands': ['SR_B7', 'SR_B4', 'SR_B3']},
         '543': {'label': 'ANALISE DA VEGETACAO - 543', 'bands': ['SR_B5', 'SR_B4', 'SR_B3']},
-        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True},
+        'MB_7': {'label': 'MULTIBANDA - 7 BANDAS (SR_B1 a SR_B5, SR_B7 + ST_B6 Termica)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'ST_B6'], 'multiband': True},
+        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS OPTICAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True},
+        '6':    {'label': 'TERMICA - BANDA 6 (Temperatura de Superficie em C)', 'bands': ['ST_B6'], 'is_index': True},
         'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
         'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['SR_B2', 'SR_B4'], 'is_index': True},
         'NDMI': {'label': 'INDICE - NDMI (Umidade: NIR-SWIR1)', 'bands': ['SR_B4', 'SR_B5'], 'is_index': True},
@@ -128,7 +134,9 @@ COMPOSITIONS = {
         '742': {'label': 'NATURAL COM REMOCAO ATMOSFERICA - 742', 'bands': ['SR_B7', 'SR_B4', 'SR_B2']},
         '743': {'label': 'INFRAVERMELHO ONDA CURTA - 743', 'bands': ['SR_B7', 'SR_B4', 'SR_B3']},
         '543': {'label': 'ANALISE DA VEGETACAO - 543', 'bands': ['SR_B5', 'SR_B4', 'SR_B3']},
-        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True},
+        'MB_7': {'label': 'MULTIBANDA - 7 BANDAS (SR_B1 a SR_B5, SR_B7 + ST_B6 Termica)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'ST_B6'], 'multiband': True},
+        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS OPTICAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True},
+        '6':    {'label': 'TERMICA - BANDA 6 (Temperatura de Superficie em C)', 'bands': ['ST_B6'], 'is_index': True},
         'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
         'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['SR_B2', 'SR_B4'], 'is_index': True},
         'NDMI': {'label': 'INDICE - NDMI (Umidade: NIR-SWIR1)', 'bands': ['SR_B4', 'SR_B5'], 'is_index': True},
@@ -183,7 +191,7 @@ COMPOSITIONS['L4'] = COMPOSITIONS['L5']
 COMPOSITIONS['L3'] = COMPOSITIONS['L1']
 COMPOSITIONS['L2'] = COMPOSITIONS['L1']
 
-def run_backend_cmd(subcmd, args_dict):
+def run_backend_cmd(subcmd, args_dict, on_progress=None):
     py3 = find_python3()
     script = get_backend_script()
     if not os.path.exists(script):
@@ -200,6 +208,7 @@ def run_backend_cmd(subcmd, args_dict):
         clean_env = dict(os.environ)
         clean_env.pop('PYTHONPATH', None)
         clean_env.pop('PYTHONHOME', None)
+        clean_env['PYTHONUNBUFFERED'] = '1'
 
         # Configurar para nao abrir janela preta do cmd
         startupinfo = None
@@ -215,10 +224,37 @@ def run_backend_cmd(subcmd, args_dict):
             startupinfo=startupinfo,
             env=clean_env
         )
-        out, err = proc.communicate()
+
+        err_chunks = []
+        if on_progress:
+            import threading
+            def _stream_err():
+                try:
+                    for raw_line in iter(proc.stderr.readline, b''):
+                        try:
+                            s = raw_line.decode('utf-8', 'ignore') if hasattr(raw_line, 'decode') else raw_line
+                            err_chunks.append(s)
+                            if '[ArcGEE]' in s and on_progress:
+                                on_progress(s.strip())
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
+            t_err = threading.Thread(target=_stream_err)
+            t_err.daemon = True
+            t_err.start()
+
+            out = proc.stdout.read()
+            proc.wait()
+            t_err.join(timeout=2.0)
+            err = "".join(err_chunks)
+        else:
+            out, err = proc.communicate()
 
         if proc.returncode != 0 and not out:
-            return {'success': False, 'message': u"Erro executando backend (codigo %d): %s" % (proc.returncode, unicode(err, errors='ignore'))}
+            err_msg = err if isinstance(err, unicode) else unicode(str(err), errors='ignore') if hasattr(str, 'decode') else str(err)
+            return {'success': False, 'message': u"Erro executando backend (codigo %d): %s" % (proc.returncode, err_msg)}
 
         # Filtrar saida para encontrar a linha JSON
         lines = out.strip().splitlines()
@@ -289,7 +325,7 @@ def get_thumbnail(image_id, sensor, comp_code, out_png, bbox=None, project=None)
         "project": project
     })
 
-def download_image(image_ids, sensor, comp_code, out_tif, custom_bands=None, load_mode="multiband", bbox=None, geojson_file=None, scale=None, crs="EPSG:4674", project=None):
+def download_image(image_ids, sensor, comp_code, out_tif, custom_bands=None, load_mode="multiband", bbox=None, geojson_file=None, scale=None, crs="EPSG:4674", project=None, on_progress=None):
     ids_str = ",".join(image_ids) if isinstance(image_ids, (list, tuple)) else str(image_ids)
     bbox_str = ",".join(str(x) for x in bbox) if bbox else None
     return run_backend_cmd("download", {
@@ -304,7 +340,7 @@ def download_image(image_ids, sensor, comp_code, out_tif, custom_bands=None, loa
         "scale": scale,
         "crs": crs,
         "project": project
-    })
+    }, on_progress=on_progress)
 
 def get_arcmap_scale():
     """Retorna o denominador da escala do mapa atual do ArcMap (ex: 250000 para 1:250.000)"""
@@ -320,29 +356,74 @@ def get_arcmap_scale():
 def set_arcmap_scale(new_scale):
     """Ajusta a escala do mapa no ArcMap para um valor especifico (ex: 500000 para 1:500.000)"""
     if not arcpy:
-        return False
+        return False, "ArcPy nao disponivel."
     try:
         mxd = arcpy.mapping.MapDocument("CURRENT")
         df = arcpy.mapping.ListDataFrames(mxd)[0]
         df.scale = float(new_scale)
         arcpy.RefreshActiveView()
-        return True
-    except Exception:
-        return False
+        export_arcmap_context()
+        return True, "Escala ajustada para 1:{:,.0f}".format(float(new_scale))
+    except Exception as e:
+        return False, "Erro ao ajustar escala: " + str(e)
 
 def get_arcmap_extent_wgs84():
-    """Retorna [minx, miny, maxx, maxy] da tela ativa do ArcMap em WGS84"""
+    """Retorna [minx, miny, maxx, maxy] da tela ativa do ArcMap em WGS84 (graus decimais).
+    Garante que coordenadas projetadas (UTM, SIRGAS, etc.) sejam sempre convertidas corretamente para EPSG:4326.
+    """
     if not arcpy:
         return None
     try:
+        import math
         mxd = arcpy.mapping.MapDocument("CURRENT")
         df = arcpy.mapping.ListDataFrames(mxd)[0]
         ext = df.extent
+        if not ext:
+            return None
+
         sr_wgs84 = arcpy.SpatialReference(4326)
-        ext_wgs = ext.projectAs(sr_wgs84)
-        return [ext_wgs.XMin, ext_wgs.YMin, ext_wgs.XMax, ext_wgs.YMax]
+
+        # 1. Determinar o SpatialReference ativo (do extent ou do data frame)
+        sr = getattr(ext, 'spatialReference', None)
+        if not sr or not getattr(sr, 'name', '').strip() or getattr(sr, 'name', '') == "Unknown":
+            sr = getattr(df, 'spatialReference', None)
+            if sr and getattr(sr, 'name', '').strip() and getattr(sr, 'name', '') != "Unknown":
+                try:
+                    ext.spatialReference = sr
+                except Exception:
+                    pass
+
+        # 2. Se ja for WGS84 ou coordenadas geograficas com valores compativeis (-180..180, -90..90)
+        xmin, ymin, xmax, ymax = float(ext.XMin), float(ext.YMin), float(ext.XMax), float(ext.YMax)
+        is_already_wgs = False
+        if sr and (getattr(sr, 'factoryCode', None) == 4326 or ('wgs' in getattr(sr, 'name', '').lower() and '1984' in getattr(sr, 'name', ''))):
+            is_already_wgs = True
+        elif abs(xmin) <= 180.0 and abs(xmax) <= 180.0 and abs(ymin) <= 90.0 and abs(ymax) <= 90.0:
+            is_already_wgs = True
+
+        if is_already_wgs:
+            return [xmin, ymin, xmax, ymax]
+
+        # 3. Converter para WGS84 via projectAs
+        if sr and getattr(sr, 'name', '') != "Unknown":
+            try:
+                ext_wgs = ext.projectAs(sr_wgs84)
+                if ext_wgs:
+                    wx1, wy1, wx2, wy2 = float(ext_wgs.XMin), float(ext_wgs.YMin), float(ext_wgs.XMax), float(ext_wgs.YMax)
+                    if not any(math.isnan(v) for v in (wx1, wy1, wx2, wy2)):
+                        if abs(wx1) <= 180.0 and abs(wx2) <= 180.0 and abs(wy1) <= 90.0 and abs(wy2) <= 90.0:
+                            return [wx1, wy1, wx2, wy2]
+            except Exception as e_proj:
+                _log_debug("projectAs falhou: " + str(e_proj))
+
+        # 4. Failsafe: se as coordenadas brutas ja estiverem em graus
+        if abs(xmin) <= 180.0 and abs(xmax) <= 180.0 and abs(ymin) <= 90.0 and abs(ymax) <= 90.0:
+            return [xmin, ymin, xmax, ymax]
+
+        _log_debug("get_arcmap_extent_wgs84: coordenadas fora do intervalo WGS84: [%s, %s, %s, %s]" % (xmin, ymin, xmax, ymax))
+        return None
     except Exception as e:
-        print("Erro obtendo extensao ArcMap:", e)
+        _log_debug("Erro obtendo extensao ArcMap: " + str(e))
         return None
 
 def get_arcmap_layers():
@@ -521,19 +602,19 @@ def get_or_create_group_layer(group_name):
 
 BAND_NAME_TO_INDEX = {
     'S2': {
-        'B2': 1, 'B3': 2, 'B4': 3, 'B5': 4, 'B6': 5, 'B7': 6, 'B8': 7, 'B8A': 8, 'B11': 9, 'B12': 10
+        'B1': 1, 'B2': 2, 'B3': 3, 'B4': 4, 'B5': 5, 'B6': 6, 'B7': 7, 'B8': 8, 'B8A': 9, 'B9': 10, 'B11': 11, 'B12': 12
     },
     'L8': {
-        'SR_B1': 1, 'SR_B2': 2, 'SR_B3': 3, 'SR_B4': 4, 'SR_B5': 5, 'SR_B6': 6, 'SR_B7': 7
+        'SR_B1': 1, 'SR_B2': 2, 'SR_B3': 3, 'SR_B4': 4, 'SR_B5': 5, 'SR_B6': 6, 'SR_B7': 7, 'ST_B10': 8
     },
     'L7': {
-        'SR_B1': 1, 'SR_B2': 2, 'SR_B3': 3, 'SR_B4': 4, 'SR_B5': 5, 'SR_B7': 6
+        'SR_B1': 1, 'SR_B2': 2, 'SR_B3': 3, 'SR_B4': 4, 'SR_B5': 5, 'SR_B7': 6, 'ST_B6': 7
     },
     'L5': {
-        'SR_B1': 1, 'SR_B2': 2, 'SR_B3': 3, 'SR_B4': 4, 'SR_B5': 5, 'SR_B7': 6
+        'SR_B1': 1, 'SR_B2': 2, 'SR_B3': 3, 'SR_B4': 4, 'SR_B5': 5, 'SR_B7': 6, 'ST_B6': 7
     },
     'L4': {
-        'SR_B1': 1, 'SR_B2': 2, 'SR_B3': 3, 'SR_B4': 4, 'SR_B5': 5, 'SR_B7': 6
+        'SR_B1': 1, 'SR_B2': 2, 'SR_B3': 3, 'SR_B4': 4, 'SR_B5': 5, 'SR_B7': 6, 'ST_B6': 7
     },
     'L3': {
         'B4': 1, 'B5': 2, 'B6': 3, 'B7': 4
@@ -573,7 +654,8 @@ def load_plugin_settings():
         'statistics_type': 'From Current Display Extent',
         'multicore_enabled': True,
         'multicore_cores': 4,
-        'aoi_buffer_meters': 1000.0
+        'aoi_buffer_meters': 1000.0,
+        'load_layer_visible': True
     }
     try:
         if os.path.exists(SETTINGS_FILE):
@@ -604,17 +686,23 @@ def resolve_rgb_band_indices(sensor, comp_code, custom_bands=None, band_count=No
         elif isinstance(custom_bands, basestring):
             raster_bands = [b.strip() for b in custom_bands.split(',') if b.strip()]
     
+    comp_info = COMPOSITIONS.get(sensor, {}).get(comp_code, {})
     if not raster_bands:
-        comp_info = COMPOSITIONS.get(sensor, {}).get(comp_code, {})
         if comp_info.get('bands'):
             raster_bands = comp_info['bands']
+        elif band_count and band_count > 3:
+            try:
+                from backend.gee_core import MULTIBAND_DEFAULT_BANDS
+                raster_bands = MULTIBAND_DEFAULT_BANDS.get(sensor, [])
+            except Exception:
+                raster_bands = []
 
-    target_comp_bands = COMPOSITIONS.get(sensor, {}).get(comp_code, {}).get('bands', [])
-    if len(target_comp_bands) < 3:
+    target_comp_bands = comp_info.get('bands', [])
+    if comp_info.get('multiband', False) or len(target_comp_bands) < 3:
         target_comp_bands = ['B4', 'B3', 'B2'] if sensor == 'S2' else ['SR_B4', 'SR_B3', 'SR_B2']
 
     if raster_bands and len(raster_bands) >= 3:
-        if len(raster_bands) == 3 and not custom_bands:
+        if len(raster_bands) == 3 and not custom_bands and (not band_count or band_count == 3):
             return (0, 1, 2)
         
         indices = []
@@ -648,7 +736,8 @@ def resolve_rgb_band_indices(sensor, comp_code, custom_bands=None, band_count=No
 
 def apply_stretch_and_stats(lyr_file_path, settings=None, rgb_bands=None):
     """Aplica configuracoes de Stretch (Standard Deviations, Percent Clip, etc) 
-    e Statistics (AreaOfView / Display Extent) ao arquivo de camada .lyr via ArcObjects."""
+    e Statistics (AreaOfView / Display Extent) ao arquivo de camada .lyr via ArcObjects.
+    Garante que rasters com 3 ou mais bandas utilizem IRasterRGBRenderer (RGB Composite)."""
     if not settings:
         settings = load_plugin_settings()
     try:
@@ -660,15 +749,34 @@ def apply_stretch_and_stats(lyr_file_path, settings=None, rgb_bands=None):
         raster_layer = layer.QueryInterface(esriCarto.IRasterLayer)
         renderer = raster_layer.Renderer
 
-        # Se rgb_bands fornecido e renderer for RGB, configurar indices das bandas (0-based)
+        # Se rgb_bands fornecido (raster com 3 ou mais bandas), GARANTIR RasterRGBRenderer!
         if rgb_bands and len(rgb_bands) >= 3:
+            rgb_rend = None
             try:
                 rgb_rend = renderer.QueryInterface(esriCarto.IRasterRGBRenderer)
-                rgb_rend.RedBandIndex = int(rgb_bands[0])
-                rgb_rend.GreenBandIndex = int(rgb_bands[1])
-                rgb_rend.BlueBandIndex = int(rgb_bands[2])
-            except Exception as e_rgb:
-                pass
+            except Exception:
+                rgb_rend = None
+
+            if not rgb_rend:
+                try:
+                    rgb_rend = comtypes.client.CreateObject(esriCarto.RasterRGBRenderer, interface=esriCarto.IRasterRGBRenderer)
+                    rend_base = rgb_rend.QueryInterface(esriCarto.IRasterRenderer)
+                    rend_base.Raster = raster_layer.Raster
+                    rend_base.Update()
+                    renderer = rend_base
+                    raster_layer.Renderer = renderer
+                except Exception as e_create_rgb:
+                    print("Erro criando RasterRGBRenderer:", e_create_rgb)
+
+            if rgb_rend:
+                try:
+                    rgb_rend.RedBandIndex = int(rgb_bands[0])
+                    rgb_rend.GreenBandIndex = int(rgb_bands[1])
+                    rgb_rend.BlueBandIndex = int(rgb_bands[2])
+                    renderer = rgb_rend.QueryInterface(esriCarto.IRasterRenderer)
+                    raster_layer.Renderer = renderer
+                except Exception as e_set_bands:
+                    print("Erro configurando bandas RGB:", e_set_bands)
 
         # 1. Configurar Stretch Type
         st_map = {
@@ -733,9 +841,10 @@ def load_into_toc(tif_path, layer_name=None, group_name=None, zoom=False, comp_c
         tif_basename_noext = os.path.splitext(tif_basename_ext)[0]
         suspect_names = {tif_basename_ext, tif_basename_noext, layer_name}
 
-        # Carregar configuracoes do plugin (Stretch, Statistics, Multicore)
+        # Carregar configuracoes do plugin (Stretch, Statistics, Multicore, Visibilidade)
         settings = load_plugin_settings()
         cores = settings.get('multicore_cores', 4) if settings.get('multicore_enabled', True) else 1
+        layer_visible = bool(settings.get('load_layer_visible', True))
 
         # Ativar Multicore no ArcPy para geoprocessamento paralelo (CalculateStatistics, BuildPyramids)
         prev_parallel = getattr(arcpy.env, 'parallelProcessingFactor', None)
@@ -744,10 +853,12 @@ def load_into_toc(tif_path, layer_name=None, group_name=None, zoom=False, comp_c
         except Exception:
             pass
 
-        # CRITICO: Desativar addOutputsToMap para que nenhuma ferramenta de geoprocessamento
-        # (CalculateStatistics, BuildPyramids, MakeRasterLayer) auto-adicione camadas a raiz do TOC
+        # Desativar addOutputsToMap para evitar camadas espurias
         prev_add_outputs = arcpy.env.addOutputsToMap
         arcpy.env.addOutputsToMap = False
+        prev_overwrite = getattr(arcpy.env, 'overwriteOutput', False)
+        arcpy.env.overwriteOutput = True
+
         try:
             # 1. Estatisticas de todas as bandas e piramides (executadas em multicore)
             try:
@@ -763,64 +874,72 @@ def load_into_toc(tif_path, layer_name=None, group_name=None, zoom=False, comp_c
             desc = arcpy.Describe(tif_path)
             band_count = getattr(desc, 'bandCount', 1)
 
-            # 3. Criar camada com simbologia RGB ou Stretched e aplicar Stretch/DRA padrao
-            temp_lyr_name = "gee_tmp_" + str(abs(hash(tif_path)))[:6]
-            arcpy.MakeRasterLayer_management(tif_path, temp_lyr_name)
-            tmp_lyr_file = os.path.join(tempfile.gettempdir(), temp_lyr_name + ".lyr")
+            # 3. Carregar GeoTIFF diretamente como Layer (sem MakeRasterLayer temporario!)
+            raw_lyr = arcpy.mapping.Layer(tif_path)
+
+            # 4. Criar copia em cache persistente para aplicar Stretch e bandas RGB via ArcObjects
+            cache_dir = os.path.join(tempfile.gettempdir(), 'arcgee_lyr_cache')
+            if not os.path.exists(cache_dir):
+                try:
+                    os.makedirs(cache_dir)
+                except Exception:
+                    pass
+
+            import re
+            safe_id = re.sub(r'[^a-zA-Z0-9_\-]', '_', layer_name)
+            persistent_lyr = os.path.join(cache_dir, safe_id + ".lyr")
             try:
-                if os.path.exists(tmp_lyr_file):
-                    os.remove(tmp_lyr_file)
+                if os.path.exists(persistent_lyr):
+                    os.remove(persistent_lyr)
             except Exception:
                 pass
-            arcpy.SaveToLayerFile_management(temp_lyr_name, tmp_lyr_file)
+
+            raw_lyr.saveACopy(persistent_lyr)
+
             if band_count >= 3:
                 rgb_indices = resolve_rgb_band_indices(sensor, comp_code, custom_bands, band_count)
-                apply_stretch_and_stats(tmp_lyr_file, settings, rgb_bands=rgb_indices)
+                apply_stretch_and_stats(persistent_lyr, settings, rgb_bands=rgb_indices)
             else:
-                apply_stretch_and_stats(tmp_lyr_file, settings, rgb_bands=None)
-            layer_obj = arcpy.mapping.Layer(tmp_lyr_file)
+                apply_stretch_and_stats(persistent_lyr, settings, rgb_bands=None)
 
+            layer_obj = arcpy.mapping.Layer(persistent_lyr)
             layer_obj.name = layer_name
-            layer_obj.visible = True
+            layer_obj.visible = layer_visible
 
-            # 4. Obter ou criar grupo alvo se solicitado (sempre GroupLayer comum, nunca Basemap)
+            # 5. Obter ou criar grupo alvo se solicitado (sempre GroupLayer comum, nunca Basemap)
             target_grp = None
             if group_name and unicode(group_name).strip():
                 target_grp = get_or_create_group_layer(group_name)
 
-            # 5. Inserir camada: dentro do grupo (AddLayerToGroup) ou na raiz (AddLayer)
+            # 6. Inserir camada: dentro do grupo (AddLayerToGroup) ou na raiz (AddLayer)
             if target_grp:
                 target_grp.visible = True
                 arcpy.mapping.AddLayerToGroup(df, target_grp, layer_obj, "BOTTOM")
             else:
                 arcpy.mapping.AddLayer(df, layer_obj, "TOP")
 
-            # Garantir aplicacao direta do stretch na camada adicionada
+            # Garantir visibilidade configurada no TOC (inclusive quando inserido em grupo)
             try:
-                if tmp_lyr_file and os.path.exists(tmp_lyr_file):
-                    for l_chk in arcpy.mapping.ListLayers(mxd, "", df):
-                        if not l_chk.isGroupLayer and l_chk.name == layer_name:
-                            arcpy.mapping.UpdateLayer(df, l_chk, arcpy.mapping.Layer(tmp_lyr_file), True)
-                            break
+                for lyr in arcpy.mapping.ListLayers(mxd, "", df):
+                    if not lyr.isGroupLayer and lyr.name == layer_name:
+                        lyr.visible = layer_visible
+                        break
             except Exception:
                 pass
 
-            # 6. Safety cleanup: Se inserido no grupo, remover qualquer camada que tenha
-            # sido criada na raiz (onde longName == name) com o mesmo nome ou dataSource
-            if target_grp:
-                to_remove = []
-                for lyr in arcpy.mapping.ListLayers(mxd, "", df):
-                    try:
-                        if not lyr.isGroupLayer and lyr.longName == lyr.name:
-                            if lyr.name in suspect_names or (hasattr(lyr, 'dataSource') and os.path.normcase(lyr.dataSource) == os.path.normcase(tif_path)):
-                                to_remove.append(lyr)
-                    except Exception:
-                        pass
-                for lyr in to_remove:
-                    try:
-                        arcpy.mapping.RemoveLayer(df, lyr)
-                    except Exception:
-                        pass
+            # 6.1 Se esta camada for a versao final completa, remover previa correspondente no TOC
+            if not layer_name.startswith("Previa_"):
+                try:
+                    prefix_cand = layer_name.rsplit('_', 1)[0]
+                    prev_names = {"Previa_" + layer_name, "Previa_" + prefix_cand}
+                    for l_chk in list(arcpy.mapping.ListLayers(mxd, "", df)):
+                        try:
+                            if not l_chk.isGroupLayer and (l_chk.name in prev_names or l_chk.name.startswith("Previa_" + prefix_cand)):
+                                arcpy.mapping.RemoveLayer(df, l_chk)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
 
             # 7. Zoom se solicitado
             if zoom:
@@ -834,6 +953,7 @@ def load_into_toc(tif_path, layer_name=None, group_name=None, zoom=False, comp_c
 
         finally:
             arcpy.env.addOutputsToMap = prev_add_outputs
+            arcpy.env.overwriteOutput = prev_overwrite
             if prev_parallel is not None:
                 try:
                     arcpy.env.parallelProcessingFactor = prev_parallel
@@ -842,10 +962,6 @@ def load_into_toc(tif_path, layer_name=None, group_name=None, zoom=False, comp_c
 
         arcpy.RefreshTOC()
         arcpy.RefreshActiveView()
-
-        # 8. Agendar cleanup diferido no proximo tick do timer (safety net contra eventos assincronos)
-        global _deferred_toc_cleanup
-        _deferred_toc_cleanup.append((suspect_names, group_name))
 
         return True, "Camada '%s' adicionada com sucesso ao grupo '%s'!" % (layer_name, group_name or "TOC")
     except Exception as e:
@@ -879,6 +995,8 @@ def replace_in_toc(tif_path, target_long_name, new_layer_name=None, comp_code=No
 
         prev_add_outputs = arcpy.env.addOutputsToMap
         arcpy.env.addOutputsToMap = False
+        prev_overwrite = getattr(arcpy.env, 'overwriteOutput', False)
+        arcpy.env.overwriteOutput = True
 
         try:
             # 1. Estatisticas e piramides
@@ -898,38 +1016,52 @@ def replace_in_toc(tif_path, target_long_name, new_layer_name=None, comp_code=No
             desc = arcpy.Describe(tif_path)
             band_count = getattr(desc, 'bandCount', 1)
 
-            temp_lyr_name = "gee_tmp_rep_" + str(abs(hash(tif_path)))[:6]
-            arcpy.MakeRasterLayer_management(tif_path, temp_lyr_name)
-            tmp_lyr_file = os.path.join(tempfile.gettempdir(), temp_lyr_name + ".lyr")
+            # 3. Carregar GeoTIFF diretamente como Layer (sem MakeRasterLayer temporario!)
+            raw_lyr = arcpy.mapping.Layer(tif_path)
+
+            cache_dir = os.path.join(tempfile.gettempdir(), 'arcgee_lyr_cache')
+            if not os.path.exists(cache_dir):
+                try:
+                    os.makedirs(cache_dir)
+                except Exception:
+                    pass
+
+            import re
+            safe_id = re.sub(r'[^a-zA-Z0-9_\-]', '_', new_layer_name)
+            persistent_lyr = os.path.join(cache_dir, safe_id + ".lyr")
             try:
-                if os.path.exists(tmp_lyr_file):
-                    os.remove(tmp_lyr_file)
+                if os.path.exists(persistent_lyr):
+                    os.remove(persistent_lyr)
             except Exception:
                 pass
-            arcpy.SaveToLayerFile_management(temp_lyr_name, tmp_lyr_file)
+
+            raw_lyr.saveACopy(persistent_lyr)
+
             if band_count >= 3:
                 rgb_indices = resolve_rgb_band_indices(sensor, comp_code, custom_bands, band_count)
-                apply_stretch_and_stats(tmp_lyr_file, settings, rgb_bands=rgb_indices)
+                apply_stretch_and_stats(persistent_lyr, settings, rgb_bands=rgb_indices)
             else:
-                apply_stretch_and_stats(tmp_lyr_file, settings, rgb_bands=None)
-            new_obj = arcpy.mapping.Layer(tmp_lyr_file)
+                apply_stretch_and_stats(persistent_lyr, settings, rgb_bands=None)
 
+            target_visible = getattr(target_lyr, 'visible', True)
+            new_obj = arcpy.mapping.Layer(persistent_lyr)
             new_obj.name = new_layer_name
-            new_obj.visible = True
+            new_obj.visible = target_visible
 
             arcpy.mapping.InsertLayer(df, target_lyr, new_obj, "BEFORE")
             arcpy.mapping.RemoveLayer(df, target_lyr)
 
             try:
-                if tmp_lyr_file and os.path.exists(tmp_lyr_file):
-                    for l_chk in arcpy.mapping.ListLayers(mxd, "", df):
-                        if not l_chk.isGroupLayer and l_chk.name == new_layer_name:
-                            arcpy.mapping.UpdateLayer(df, l_chk, arcpy.mapping.Layer(tmp_lyr_file), True)
-                            break
+                for lyr in arcpy.mapping.ListLayers(mxd, "", df):
+                    if not lyr.isGroupLayer and lyr.name == new_layer_name:
+                        lyr.visible = target_visible
+                        break
             except Exception:
                 pass
+
         finally:
             arcpy.env.addOutputsToMap = prev_add_outputs
+            arcpy.env.overwriteOutput = prev_overwrite
             if prev_parallel is not None:
                 try:
                     arcpy.env.parallelProcessingFactor = prev_parallel
@@ -1055,6 +1187,15 @@ def apply_stretch_to_toc_layer(target_layer_name=None, settings=None):
 CONTEXT_FILE = os.path.join(tempfile.gettempdir(), "gee_arcgis_context.json")
 CMD_FILE = os.path.join(tempfile.gettempdir(), "gee_arcgis_cmd.json")
 REPLY_FILE = os.path.join(tempfile.gettempdir(), "gee_arcgis_reply.json")
+DEBUG_LOG_FILE = os.path.join(tempfile.gettempdir(), "arcgee_debug.log")
+
+def _log_debug(msg):
+    try:
+        t_str = time.strftime("%Y-%m-%d %H:%M:%S")
+        with open(DEBUG_LOG_FILE, "a") as f:
+            f.write("[%s] %s\n" % (t_str, msg))
+    except Exception:
+        pass
 
 def safe_write_json(filepath, data):
     """Escreve JSON com tentativas seguras contra conflito de leitura/escrita no Windows"""
@@ -1096,9 +1237,12 @@ def export_arcmap_context():
             'time': time.time()
         }
         safe_write_json(CONTEXT_FILE, ctx)
+        _log_debug("export_arcmap_context: scale=%s, bbox=%s, rasters=%d, vectors=%d" % (
+            str(scale), str(bbox), len(r_layers), len(v_layers)
+        ))
         return ctx
     except Exception as e:
-        print("Erro exportando contexto ArcMap:", e)
+        _log_debug("Erro exportando contexto ArcMap: " + str(e))
         return None
 
 def read_arcmap_context():
@@ -1107,6 +1251,7 @@ def read_arcmap_context():
 
 _arcmap_timer_id = None
 _arcmap_timer_proc = None
+_last_timer_ctx_time = 0
 
 # Lista de cleanups diferidos: tuplas (suspect_names_set, group_name)
 # Preenchida por load_into_toc; processada no proximo tick do timer
@@ -1164,8 +1309,9 @@ def _run_deferred_toc_cleanup():
     finally:
         _is_cleaning_toc = False
 
-def start_arcmap_ipc_timer(interval_ms=500):
-    """Inicia timer Win32 nativo na thread de UI do ArcMap para escutar comandos continuamente"""
+def start_arcmap_ipc_timer(interval_ms=250):
+    """Inicia timer Win32 nativo na thread de UI do ArcMap para escutar comandos
+    e atualizar contexto continuamente, mesmo com ArcMap em segundo plano."""
     global _arcmap_timer_id, _arcmap_timer_proc
     if _arcmap_timer_id is not None:
         return True
@@ -1173,10 +1319,16 @@ def start_arcmap_ipc_timer(interval_ms=500):
         import ctypes
         import ctypes.wintypes
         user32 = ctypes.windll.user32
+
         TIMERPROC = ctypes.WINFUNCTYPE(None, ctypes.wintypes.HWND, ctypes.c_uint, ctypes.c_ulong, ctypes.wintypes.DWORD)
         def on_timer(hwnd, msg, id_event, dw_time):
+            global _last_timer_ctx_time
             try:
                 process_pending_arcmap_commands()
+                now = time.time()
+                if now - _last_timer_ctx_time > 0.6:
+                    _last_timer_ctx_time = now
+                    export_arcmap_context()
             except Exception:
                 pass
         _timer_proc_ref = TIMERPROC(on_timer)
@@ -1184,29 +1336,31 @@ def start_arcmap_ipc_timer(interval_ms=500):
         if t_id != 0:
             _arcmap_timer_id = t_id
             _arcmap_timer_proc = _timer_proc_ref
+            _log_debug("Timer Win32 iniciado (ID %s, %d ms)" % (str(t_id), interval_ms))
             return True
     except Exception as e:
-        print("Erro iniciando timer Win32:", e)
+        _log_debug("Erro iniciando timer Win32: " + str(e))
     return False
 
 def stop_arcmap_ipc_timer():
     """Para o timer Win32 nativo do ArcMap"""
     global _arcmap_timer_id, _arcmap_timer_proc
-    if _arcmap_timer_id is not None:
-        try:
+    try:
+        if _arcmap_timer_id is not None:
             import ctypes
-            ctypes.windll.user32.KillTimer(0, _arcmap_timer_id)
-        except Exception:
-            pass
-        _arcmap_timer_id = None
-        _arcmap_timer_proc = None
+            user32 = ctypes.windll.user32
+            user32.KillTimer(0, _arcmap_timer_id)
+            _log_debug("Timer Win32 parado.")
+    except Exception:
+        pass
+    _arcmap_timer_id = None
+    _arcmap_timer_proc = None
 
 def process_pending_arcmap_commands():
     """Executado periodicamente pelo timer nativo ou no onUpdate do Add-In (thread principal do ArcMap).
     Possui protecao estrita contra reentrancia para evitar loops de eventos COM durante RefreshTOC/RefreshActiveView.
     """
     global _is_processing_cmd
-    # 1. Trava contra reentrancia: se ja estiver processando um comando, ignorar novas chamadas
     if _is_processing_cmd:
         return False
 
@@ -1217,9 +1371,7 @@ def process_pending_arcmap_commands():
     _is_processing_cmd = True
     try:
         cmd = safe_read_json(CMD_FILE)
-        # 2. CRITICO: Remover o arquivo de comando IMEDIATAMENTE antes de iniciar a execucao
-        # Isso impede que eventos disparados por RefreshTOC, RefreshActiveView ou onUpdate do Add-In
-        # encontrem o mesmo comando e entrem em recursao infinita!
+        # Remover comando imediatamente para evitar execucoes duplicadas
         try:
             if os.path.exists(CMD_FILE):
                 os.remove(CMD_FILE)
@@ -1231,6 +1383,7 @@ def process_pending_arcmap_commands():
 
         cmd_id = cmd.get('id', '')
         action = cmd.get('action')
+        _log_debug("process_pending_arcmap_commands: executando '%s' (id=%s)" % (action, cmd_id))
         resp = {'reply_to': cmd_id, 'success': False, 'message': 'Acao desconhecida'}
 
         try:
@@ -1294,6 +1447,7 @@ def process_pending_arcmap_commands():
 
         # Gravar resposta com safe_write_json
         safe_write_json(REPLY_FILE, resp)
+        _log_debug("process_pending_arcmap_commands: concluido '%s' (sucesso=%s)" % (action, str(resp.get('success'))))
 
         # Atualizar contexto apos alteracoes
         try:
@@ -1301,51 +1455,54 @@ def process_pending_arcmap_commands():
         except Exception:
             pass
 
-        # Processar cleanups pendentes
         _run_deferred_toc_cleanup()
-
         return True
 
     finally:
-        # Liberar a trava sob qualquer circunstancia
         _is_processing_cmd = False
+
+_ipc_cmd_lock = threading.Lock()
 
 def send_arcmap_command(action_dict, timeout=120):
     """Envia um comando para o ArcMap a partir do processo da GUI e aguarda a confirmacao"""
-    cmd_id = "cmd_" + str(int(time.time() * 1000))
-    action_dict['id'] = cmd_id
+    with _ipc_cmd_lock:
+        cmd_id = "cmd_" + str(int(time.time() * 1000))
+        action_dict['id'] = cmd_id
 
-    # Limpar resposta anterior se existir
-    if os.path.exists(REPLY_FILE):
+        # Limpar resposta anterior se existir
+        if os.path.exists(REPLY_FILE):
+            try:
+                os.remove(REPLY_FILE)
+            except Exception:
+                pass
+
+        _log_debug("send_arcmap_command: enviando acao '%s' (id=%s)" % (action_dict.get('action'), cmd_id))
+        safe_write_json(CMD_FILE, action_dict)
+
+        # Aguardar resposta no arquivo REPLY_FILE
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            if os.path.exists(REPLY_FILE):
+                rep = safe_read_json(REPLY_FILE)
+                if rep and rep.get('reply_to') == cmd_id:
+                    try:
+                        os.remove(REPLY_FILE)
+                    except Exception:
+                        pass
+                    _log_debug("send_arcmap_command: resposta recebida para '%s' (sucesso=%s)" % (
+                        action_dict.get('action'), str(rep.get('success'))
+                    ))
+                    return rep
+            time.sleep(0.08)
+
+        _log_debug("send_arcmap_command: TIMEOUT apos %ds para acao '%s'" % (timeout, action_dict.get('action')))
         try:
-            os.remove(REPLY_FILE)
+            if os.path.exists(CMD_FILE):
+                os.remove(CMD_FILE)
         except Exception:
             pass
 
-    # Escrever arquivo de comando com safe_write_json
-    safe_write_json(CMD_FILE, action_dict)
-
-    # Aguardar resposta no arquivo REPLY_FILE
-    t0 = time.time()
-    while time.time() - t0 < timeout:
-        if os.path.exists(REPLY_FILE):
-            rep = safe_read_json(REPLY_FILE)
-            if rep and rep.get('reply_to') == cmd_id:
-                try:
-                    os.remove(REPLY_FILE)
-                except Exception:
-                    pass
-                return rep
-        time.sleep(0.2)
-
-    # Limpar comando pendente para evitar bloqueios ou execucoes tardias
-    try:
-        if os.path.exists(CMD_FILE):
-            os.remove(CMD_FILE)
-    except Exception:
-        pass
-
-    return {'success': False, 'message': u'Tempo limite esgotado (%ds) aguardando resposta do ArcMap.' % timeout}
+        return {'success': False, 'message': u'Tempo limite esgotado (%ds) aguardando resposta do ArcMap.' % timeout}
 
 def apply_stretch(layer_name=None, settings=None):
     """Envia comando para o ArcMap aplicar/garantir o Stretch configurado na camada ou no mapa"""

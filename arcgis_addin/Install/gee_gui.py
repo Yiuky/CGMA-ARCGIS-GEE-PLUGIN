@@ -91,14 +91,32 @@ def setup_window_icon(window):
             except Exception:
                 pass
 
+def _safe_float(val, default=0.0):
+    try:
+        if val is None:
+            return default
+        s = unicode(val).strip().replace(',', '.')
+        return float(s)
+    except Exception:
+        return default
+
+def _safe_int(val, default=0):
+    try:
+        if val is None:
+            return default
+        s = unicode(val).strip().replace(',', '.')
+        return int(float(s))
+    except Exception:
+        return default
+
 class GEESettingsDialog(object):
-    """Janela modal para configuracao de Stretch, Estatisticas (DRA) e Multicore"""
+    """Janela modal para configuracao de Stretch, Estatisticas (DRA), Visibilidade TOC e Multicore"""
     def __init__(self, parent):
         self.parent = parent
         p_win = parent.root if hasattr(parent, 'root') else parent
         self.top = tk.Toplevel(p_win)
         self.top.title(u"Configurações - CGMA ArcGEE Explorer")
-        self.top.geometry("540x690")
+        self.top.geometry("540x510")
         self.top.resizable(False, False)
         setup_window_icon(self.top)
         self.top.transient(p_win)
@@ -107,7 +125,7 @@ class GEESettingsDialog(object):
         # Centralizar na janela pai
         try:
             x = p_win.winfo_rootx() + (p_win.winfo_width() // 2) - 270
-            y = p_win.winfo_rooty() + (p_win.winfo_height() // 2) - 335
+            y = p_win.winfo_rooty() + (p_win.winfo_height() // 2) - 255
             self.top.geometry("+%d+%d" % (max(0, x), max(0, y)))
         except Exception:
             pass
@@ -124,14 +142,32 @@ class GEESettingsDialog(object):
         self.setup_ui()
 
     def setup_ui(self):
-        main_pad = ttk.Frame(self.top, padding=12)
-        main_pad.pack(fill=tk.BOTH, expand=True)
+        # 1. Barra de Botoes FIXA NA BASE (garante que NUNCA seja suprimida ou empurrada para fora)
+        btn_bar = ttk.Frame(self.top, padding=(12, 10))
+        btn_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        btn_defaults = ttk.Button(btn_bar, text=u"Restaurar Padrões", command=self.on_restore_defaults)
+        btn_defaults.pack(side=tk.LEFT)
+
+        btn_cancel = ttk.Button(btn_bar, text=u"Cancelar", command=self.top.destroy)
+        btn_cancel.pack(side=tk.RIGHT, padx=(6, 0))
+
+        btn_save = ttk.Button(btn_bar, text=u"Salvar Configurações", style="Primary.TButton", command=self.on_save)
+        btn_save.pack(side=tk.RIGHT)
+
+        # 2. Notebook com Abas (Visualizacao & TOC | Processamento & Sistema)
+        nb = ttk.Notebook(self.top)
+        nb.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=(10, 4))
+
+        # --- ABA 1: VISUALIZACAO & TOC ---
+        tab_vis = ttk.Frame(nb, padding=10)
+        nb.add(tab_vis, text=u"  Visualização & TOC  ")
 
         # 1. Grupo Stretch (Realce)
-        grp_stretch = ttk.LabelFrame(main_pad, text=u" Realce de Contraste Padrão (Stretch) ", padding=10)
-        grp_stretch.pack(fill=tk.X, pady=(0, 10))
+        grp_stretch = ttk.LabelFrame(tab_vis, text=u" Realce de Contraste Padrão (Stretch) ", padding=8)
+        grp_stretch.pack(fill=tk.X, pady=(0, 8))
 
-        ttk.Label(grp_stretch, text=u"Tipo de Stretch:").grid(row=0, column=0, sticky=tk.W, pady=4)
+        ttk.Label(grp_stretch, text=u"Tipo de Stretch:").grid(row=0, column=0, sticky=tk.W, pady=3)
         self.var_stretch = tk.StringVar(value=self.settings.get('stretch_type', 'Standard Deviations'))
         self.cbo_stretch = ttk.Combobox(
             grp_stretch,
@@ -148,11 +184,12 @@ class GEESettingsDialog(object):
             ],
             width=24
         )
-        self.cbo_stretch.grid(row=0, column=1, sticky=tk.W, padx=8, pady=4)
+        self.cbo_stretch.grid(row=0, column=1, sticky=tk.W, padx=8, pady=3)
         self.cbo_stretch.bind("<<ComboboxSelected>>", self._on_stretch_changed)
 
-        ttk.Label(grp_stretch, text=u"Desvios Padrão (n):").grid(row=1, column=0, sticky=tk.W, pady=4)
-        self.var_std_param = tk.DoubleVar(value=float(self.settings.get('stretch_std_param', 2.0)))
+        ttk.Label(grp_stretch, text=u"Desvios Padrão (n):").grid(row=1, column=0, sticky=tk.W, pady=3)
+        init_std = str(self.settings.get('stretch_std_param', 2.0)).replace(',', '.')
+        self.var_std_param = tk.StringVar(value=init_std)
         self.spn_std = tk.Spinbox(
             grp_stretch,
             from_=0.5,
@@ -161,22 +198,22 @@ class GEESettingsDialog(object):
             textvariable=self.var_std_param,
             width=8
         )
-        self.spn_std.grid(row=1, column=1, sticky=tk.W, padx=8, pady=4)
+        self.spn_std.grid(row=1, column=1, sticky=tk.W, padx=8, pady=3)
         self.lbl_std_hint = ttk.Label(grp_stretch, text=u"(Padrão recomendado: 2.0)", font=("Segoe UI", 8), foreground="#555")
-        self.lbl_std_hint.grid(row=1, column=1, sticky=tk.W, padx=(85, 0), pady=4)
+        self.lbl_std_hint.grid(row=1, column=1, sticky=tk.W, padx=(85, 0), pady=3)
 
         btn_apply_now = ttk.Button(
             grp_stretch,
             text=u"⚡ Aplicar e Garantir Stretch Atual nas Camadas do ArcMap",
             command=self.on_apply_stretch_now
         )
-        btn_apply_now.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(8, 2))
+        btn_apply_now.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(6, 2))
 
         # 2. Grupo Estatisticas (DRA)
-        grp_stats = ttk.LabelFrame(main_pad, text=u" Cálculo de Estatísticas do Raster (DRA) ", padding=10)
-        grp_stats.pack(fill=tk.X, pady=(0, 10))
+        grp_stats = ttk.LabelFrame(tab_vis, text=u" Cálculo de Estatísticas do Raster (DRA) ", padding=8)
+        grp_stats.pack(fill=tk.X, pady=(0, 8))
 
-        ttk.Label(grp_stats, text=u"Origem das Estatísticas:").grid(row=0, column=0, sticky=tk.W, pady=4)
+        ttk.Label(grp_stats, text=u"Origem das Estatísticas:").grid(row=0, column=0, sticky=tk.W, pady=3)
         self.var_stats = tk.StringVar(value=self.settings.get('statistics_type', 'From Current Display Extent'))
         self.cbo_stats = ttk.Combobox(
             grp_stats,
@@ -189,7 +226,7 @@ class GEESettingsDialog(object):
             ],
             width=28
         )
-        self.cbo_stats.grid(row=0, column=1, sticky=tk.W, padx=8, pady=4)
+        self.cbo_stats.grid(row=0, column=1, sticky=tk.W, padx=8, pady=3)
 
         lbl_stats_desc = ttk.Label(
             grp_stats,
@@ -197,11 +234,35 @@ class GEESettingsDialog(object):
             font=("Segoe UI", 8),
             foreground="#1b4f72"
         )
-        lbl_stats_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+        lbl_stats_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(3, 0))
 
-        # 3. Grupo Multicore
-        grp_multi = ttk.LabelFrame(main_pad, text=u" Desempenho e Aceleração Multicore ", padding=10)
-        grp_multi.pack(fill=tk.X, pady=(0, 12))
+        # 3. Grupo Visualizacao no TOC (ArcMap)
+        grp_vis = ttk.LabelFrame(tab_vis, text=u" Visualização de Camadas no TOC (ArcMap) ", padding=8)
+        grp_vis.pack(fill=tk.X, pady=(0, 4))
+
+        self.var_layer_visible = tk.BooleanVar(value=bool(self.settings.get('load_layer_visible', True)))
+        self.chk_layer_visible = ttk.Checkbutton(
+            grp_vis,
+            text=u"Carregar imagens no TOC com visualização ativada (visíveis no mapa)",
+            variable=self.var_layer_visible
+        )
+        self.chk_layer_visible.pack(anchor=tk.W, pady=2)
+
+        lbl_vis_desc = ttk.Label(
+            grp_vis,
+            text=u"• Ativado: Imagens entram marcadas no TOC e renderizadas na tela.\n• Desativado: Imagens entram desmarcadas no TOC, ideal para carregar\n  várias cenas sem travar ou congelar a renderização do ArcMap.",
+            font=("Segoe UI", 8),
+            foreground="#1b4f72"
+        )
+        lbl_vis_desc.pack(anchor=tk.W, pady=(2, 0))
+
+        # --- ABA 2: PROCESSO & SISTEMA ---
+        tab_sys = ttk.Frame(nb, padding=10)
+        nb.add(tab_sys, text=u"  Processamento & Sistema  ")
+
+        # 4. Grupo Multicore
+        grp_multi = ttk.LabelFrame(tab_sys, text=u" Desempenho e Aceleração Multicore ", padding=8)
+        grp_multi.pack(fill=tk.X, pady=(0, 8))
 
         self.var_multicore = tk.BooleanVar(value=bool(self.settings.get('multicore_enabled', True)))
         self.chk_multi = ttk.Checkbutton(
@@ -212,9 +273,9 @@ class GEESettingsDialog(object):
         )
         self.chk_multi.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=2)
 
-        ttk.Label(grp_multi, text=u"Número de Cores (Threads):").grid(row=1, column=0, sticky=tk.W, pady=4)
+        ttk.Label(grp_multi, text=u"Número de Cores (Threads):").grid(row=1, column=0, sticky=tk.W, pady=3)
         init_cores = int(self.settings.get('multicore_cores', min(4, self.max_system_cores)))
-        self.var_cores = tk.IntVar(value=min(max(1, init_cores), self.max_system_cores))
+        self.var_cores = tk.StringVar(value=str(min(max(1, init_cores), self.max_system_cores)))
         self.spn_cores = tk.Spinbox(
             grp_multi,
             from_=1,
@@ -223,7 +284,7 @@ class GEESettingsDialog(object):
             textvariable=self.var_cores,
             width=8
         )
-        self.spn_cores.grid(row=1, column=1, sticky=tk.W, padx=8, pady=4)
+        self.spn_cores.grid(row=1, column=1, sticky=tk.W, padx=8, pady=3)
 
         lbl_cores_hint = ttk.Label(
             grp_multi,
@@ -231,23 +292,23 @@ class GEESettingsDialog(object):
             font=("Segoe UI", 8),
             foreground="#555"
         )
-        lbl_cores_hint.grid(row=1, column=1, sticky=tk.W, padx=(85, 0), pady=4)
+        lbl_cores_hint.grid(row=1, column=1, sticky=tk.W, padx=(85, 0), pady=3)
 
         lbl_multi_desc = ttk.Label(
             grp_multi,
-            text=u"• Acelera a geração de pirâmides e cálculo de estatísticas no ArcMap.\n• Permite o download simultâneo de múltiplas cenas em segundo plano.",
+            text=u"• Acelera a geração de pirâmides e estatísticas no ArcMap.\n• Permite o download simultâneo de múltiplos quadrantes em segundo plano.",
             font=("Segoe UI", 8),
             foreground="#0b5345"
         )
-        lbl_multi_desc.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+        lbl_multi_desc.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(3, 0))
 
-        # 4. Grupo Buffer da Camada Vetorial (AOI)
-        grp_aoi = ttk.LabelFrame(main_pad, text=u" Buffer do Retângulo Envolvente (AOI) ", padding=10)
-        grp_aoi.pack(fill=tk.X, pady=(0, 10))
+        # 5. Grupo Buffer da Camada Vetorial (AOI)
+        grp_aoi = ttk.LabelFrame(tab_sys, text=u" Buffer do Retângulo Envolvente (AOI) ", padding=8)
+        grp_aoi.pack(fill=tk.X, pady=(0, 8))
 
-        ttk.Label(grp_aoi, text=u"Buffer Adicional (metros):").grid(row=0, column=0, sticky=tk.W, pady=4)
-        init_buffer = float(self.settings.get('aoi_buffer_meters', 1000.0))
-        self.var_aoi_buffer = tk.DoubleVar(value=init_buffer)
+        ttk.Label(grp_aoi, text=u"Buffer Adicional (metros):").grid(row=0, column=0, sticky=tk.W, pady=3)
+        init_buffer = self.settings.get('aoi_buffer_meters', 1000.0)
+        self.var_aoi_buffer = tk.StringVar(value=str(int(init_buffer) if float(init_buffer).is_integer() else init_buffer).replace(',', '.'))
         self.spn_aoi_buffer = tk.Spinbox(
             grp_aoi,
             from_=0,
@@ -256,34 +317,34 @@ class GEESettingsDialog(object):
             textvariable=self.var_aoi_buffer,
             width=10
         )
-        self.spn_aoi_buffer.grid(row=0, column=1, sticky=tk.W, padx=8, pady=4)
+        self.spn_aoi_buffer.grid(row=0, column=1, sticky=tk.W, padx=8, pady=3)
 
         lbl_buffer_hint = ttk.Label(
             grp_aoi,
-            text=u"(Padrão: 1000m = 1 km | ex: 0m, 500m, 1000m, 2000m)",
+            text=u"(Padrão: 1000m = 1 km | ex: 0m, 500m, 1000m)",
             font=("Segoe UI", 8),
             foreground="#555"
         )
-        lbl_buffer_hint.grid(row=0, column=1, sticky=tk.W, padx=(100, 0), pady=4)
+        lbl_buffer_hint.grid(row=0, column=1, sticky=tk.W, padx=(100, 0), pady=3)
 
         lbl_aoi_desc = ttk.Label(
             grp_aoi,
-            text=u"• Expande o retângulo envolvente da AOI em N metros em todas as direções\n  para garantir margem de contexto geográfico no raster exportado.",
+            text=u"• Expande o retângulo da AOI em N metros em todas as direções.",
             font=("Segoe UI", 8),
             foreground="#1b4f72"
         )
-        lbl_aoi_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+        lbl_aoi_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(3, 0))
 
-        # 5. Grupo Atualização do Plugin
-        grp_update = ttk.LabelFrame(main_pad, text=u" Atualização do Plugin ", padding=10)
-        grp_update.pack(fill=tk.X, pady=(0, 10))
+        # 6. Grupo Atualizacao do Plugin
+        grp_update = ttk.LabelFrame(tab_sys, text=u" Atualização do Plugin ", padding=8)
+        grp_update.pack(fill=tk.X, pady=(0, 4))
 
         ttk.Label(
             grp_update,
             text=u"Sincronize o plugin com as últimas melhorias via GitHub ou arquivo ZIP local:",
             font=("Segoe UI", 8),
             foreground="#333"
-        ).pack(anchor=tk.W, pady=(0, 6))
+        ).pack(anchor=tk.W, pady=(0, 4))
 
         btn_open_updater = ttk.Button(
             grp_update,
@@ -291,19 +352,6 @@ class GEESettingsDialog(object):
             command=self._open_updater
         )
         btn_open_updater.pack(anchor=tk.W)
-
-        # 6. Barra de Botoes
-        btn_bar = ttk.Frame(main_pad)
-        btn_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(6, 0))
-
-        btn_defaults = ttk.Button(btn_bar, text=u"Restaurar Padrões", command=self.on_restore_defaults)
-        btn_defaults.pack(side=tk.LEFT)
-
-        btn_cancel = ttk.Button(btn_bar, text=u"Cancelar", command=self.top.destroy)
-        btn_cancel.pack(side=tk.RIGHT, padx=(6, 0))
-
-        btn_save = ttk.Button(btn_bar, text=u"Salvar Configurações", style="Primary.TButton", command=self.on_save)
-        btn_save.pack(side=tk.RIGHT)
 
         self._on_stretch_changed()
         self._on_multi_toggled()
@@ -328,49 +376,62 @@ class GEESettingsDialog(object):
 
     def on_restore_defaults(self):
         self.var_stretch.set("Standard Deviations")
-        self.var_std_param.set(2.0)
+        self.var_std_param.set("2.0")
         self.var_stats.set("From Current Display Extent")
         self.var_multicore.set(True)
-        self.var_cores.set(min(4, self.max_system_cores))
-        self.var_aoi_buffer.set(1000.0)
+        self.var_cores.set(str(min(4, self.max_system_cores)))
+        self.var_aoi_buffer.set("1000")
+        self.var_layer_visible.set(True)
         self._on_stretch_changed()
         self._on_multi_toggled()
 
     def on_apply_stretch_now(self):
-        new_settings = {
-            'stretch_type': self.var_stretch.get(),
-            'stretch_std_param': float(self.var_std_param.get()),
-            'statistics_type': self.var_stats.get(),
-            'multicore_enabled': bool(self.var_multicore.get()),
-            'multicore_cores': int(self.var_cores.get()),
-            'aoi_buffer_meters': float(self.var_aoi_buffer.get())
-        }
-        gee_bridge.save_plugin_settings(new_settings)
-        if hasattr(self.parent, 'settings'):
-            self.parent.settings = new_settings
-
-        rep = gee_bridge.apply_stretch(None, settings=new_settings)
-        if rep.get('success'):
-            messagebox.showinfo(u"Stretch Garantido", rep.get('message', u"Stretch aplicado com sucesso!"), parent=self.top)
-        else:
-            messagebox.showwarning(u"Aviso ArcMap", rep.get('message', u"Não foi possível aplicar nas camadas do TOC."), parent=self.top)
-
-    def on_save(self):
-        new_settings = {
-            'stretch_type': self.var_stretch.get(),
-            'stretch_std_param': float(self.var_std_param.get()),
-            'statistics_type': self.var_stats.get(),
-            'multicore_enabled': bool(self.var_multicore.get()),
-            'multicore_cores': int(self.var_cores.get()),
-            'aoi_buffer_meters': float(self.var_aoi_buffer.get())
-        }
-        if gee_bridge.save_plugin_settings(new_settings):
+        try:
+            new_settings = {
+                'stretch_type': self.var_stretch.get(),
+                'stretch_std_param': _safe_float(self.var_std_param.get(), 2.0),
+                'statistics_type': self.var_stats.get(),
+                'multicore_enabled': bool(self.var_multicore.get()),
+                'multicore_cores': _safe_int(self.var_cores.get(), min(4, self.max_system_cores)),
+                'aoi_buffer_meters': _safe_float(self.var_aoi_buffer.get(), 1000.0),
+                'load_layer_visible': bool(self.var_layer_visible.get())
+            }
+            gee_bridge.save_plugin_settings(new_settings)
             if hasattr(self.parent, 'settings'):
                 self.parent.settings = new_settings
-            messagebox.showinfo(u"Configurações Salvas", u"As preferências de Stretch, Estatísticas, Multicore e Buffer de AOI foram salvas com sucesso!", parent=self.top)
-            self.top.destroy()
-        else:
-            messagebox.showerror(u"Erro", u"Falha ao salvar arquivo de configurações.", parent=self.top)
+
+            rep = gee_bridge.apply_stretch(None, settings=new_settings)
+            if rep.get('success'):
+                messagebox.showinfo(u"Stretch Garantido", rep.get('message', u"Stretch aplicado com sucesso!"), parent=self.top)
+            else:
+                messagebox.showwarning(u"Aviso ArcMap", rep.get('message', u"Não foi possível aplicar nas camadas do TOC."), parent=self.top)
+        except Exception as e:
+            messagebox.showerror(u"Erro ao Aplicar", u"Erro ao aplicar configurações:\n" + unicode(e), parent=self.top)
+
+    def on_save(self):
+        try:
+            new_settings = {
+                'stretch_type': self.var_stretch.get(),
+                'stretch_std_param': _safe_float(self.var_std_param.get(), 2.0),
+                'statistics_type': self.var_stats.get(),
+                'multicore_enabled': bool(self.var_multicore.get()),
+                'multicore_cores': _safe_int(self.var_cores.get(), min(4, self.max_system_cores)),
+                'aoi_buffer_meters': _safe_float(self.var_aoi_buffer.get(), 1000.0),
+                'load_layer_visible': bool(self.var_layer_visible.get())
+            }
+            if gee_bridge.save_plugin_settings(new_settings):
+                if hasattr(self.parent, 'settings'):
+                    self.parent.settings = new_settings
+                messagebox.showinfo(
+                    u"Configurações Salvas",
+                    u"As preferências de Stretch, Estatísticas, Multicore, Buffer e Visibilidade no TOC foram salvas com sucesso!",
+                    parent=self.top
+                )
+                self.top.destroy()
+            else:
+                messagebox.showerror(u"Erro", u"Falha ao salvar arquivo de configurações.", parent=self.top)
+        except Exception as e:
+            messagebox.showerror(u"Erro ao Salvar", u"Erro ao processar as configurações:\n" + unicode(e), parent=self.top)
 
 class GEEAboutDialog(object):
     """Janela modal Sobre com informações institucionais, versão, links e dicas"""
@@ -417,7 +478,7 @@ class GEEAboutDialog(object):
 
         lbl_sub = tk.Label(
             title_box,
-            text=u"Google Earth Engine Explorer for ArcGIS Desktop 10.8 (ArcMap)  |  v1.6",
+            text=u"Google Earth Engine Explorer for ArcGIS Desktop 10.8 (ArcMap)  |  v1.7",
             font=("Segoe UI", 9, "italic"),
             fg="#566573"
         )
@@ -438,7 +499,7 @@ class GEEAboutDialog(object):
         info_frame.pack(fill=tk.X, pady=(0, 10))
 
         info_text = (
-            u"• Versão: v1.6 (Download Particionado > 48 MB & Qualidade Nativa 100%)\n"
+            u"• Versão: v1.7 (Simbologia RGB Dinâmica & Visibilidade no TOC)\n"
             u"• Organização: Coordenadoria de Geoprocessamento e Monitoramento Ambiental\n"
             u"  Secretaria de Estado de Meio Ambiente de Mato Grosso (CGMA / SEMA-MT)\n"
             u"• Desenvolvedor: Joberth Firmino Gambati\n"
@@ -745,7 +806,7 @@ class GEEUpdaterDialog(object):
         except Exception as e:
             messagebox.showerror(u"Erro ao Extrair ZIP", str(e), parent=self.top)
 
-CURRENT_VERSION = "1.6"
+CURRENT_VERSION = "1.7"
 
 SENSOR_METADATA = {
     'S2': {
@@ -885,7 +946,7 @@ def normalize_date(d_str):
 class GEEPluginWindow(object):
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title(u"CGMA ArcGEE Explorer (ArcGIS 10.8)  |  v1.6")
+        self.root.title(u"CGMA ArcGEE Explorer (ArcGIS 10.8)  |  v1.7")
         self.root.geometry("1100x740")
         self.root.minsize(960, 640)
         setup_window_icon(self.root)
@@ -910,11 +971,20 @@ class GEEPluginWindow(object):
         self.style.configure("Primary.TButton", font=("Segoe UI", 10, "bold"), foreground="#0b5345")
         self.style.configure("Action.TButton", font=("Segoe UI", 9, "bold"), foreground="#1a5276")
 
-        self.thumb_photo = None
-        self.current_thumb_url = None
+        try:
+            self.max_system_cores = multiprocessing.cpu_count()
+        except Exception:
+            self.max_system_cores = 4
+
         self.is_authenticated = False
         self.images_cache = []
         self.is_downloading = False
+        self.download_thread = None
+        self.download_queue = queue_mod.Queue()
+        self.download_worker_thread = None
+        self.queued_ids = set()
+        self.current_downloading_ids = set()
+        self.ipc_lock = threading.Lock()
         self.settings = gee_bridge.load_plugin_settings()
 
         self.setup_ui()
@@ -957,8 +1027,199 @@ class GEEPluginWindow(object):
         except Exception:
             pass
 
+        # Watchdog: verificar se thread de download terminou e destravar botoes da interface
+        if getattr(self, 'is_downloading', False):
+            d_worker = getattr(self, 'download_worker_thread', None)
+            d_single = getattr(self, 'download_thread', None)
+            worker_alive = (d_worker is not None and d_worker.is_alive())
+            single_alive = (d_single is not None and d_single.is_alive())
+            q_empty = hasattr(self, 'download_queue') and self.download_queue.empty()
+            if not worker_alive and not single_alive and q_empty:
+                self.is_downloading = False
+                self.download_worker_thread = None
+                self.download_thread = None
+                if hasattr(self, 'queued_ids'):
+                    self.queued_ids.clear()
+                if hasattr(self, 'current_downloading_ids'):
+                    self.current_downloading_ids.clear()
+                self.update_action_buttons_state()
+
         if self._alive:
             self._schedule_poll()
+
+    def set_progress(self, percent, text=None):
+        """Atualiza a barra de progresso, percentual e mensagem de status de forma segura na GUI"""
+        def _update():
+            if percent is not None and hasattr(self, 'pbar') and hasattr(self, 'lbl_pct'):
+                p = max(0, min(100, int(percent)))
+                self.pbar['value'] = p
+                self.lbl_pct.config(text="%d%%" % p)
+            if text and hasattr(self, 'lbl_progress'):
+                self.lbl_progress.config(text=text)
+        self.post_to_gui(_update)
+
+    def set_row_status(self, img_id_or_short_name, status_text, tag=None):
+        """Atualiza a coluna de status de uma linha especifica na tabela de imagens"""
+        def _update():
+            if not hasattr(self, 'tree'):
+                return
+            children = self.tree.get_children()
+            target_str = unicode(img_id_or_short_name).strip() if sys.version_info[0] < 3 else str(img_id_or_short_name).strip()
+            for idx, item in enumerate(children):
+                if idx < len(self.images_cache):
+                    img_data = self.images_cache[idx]
+                    cid = img_data.get('id', '')
+                    cname = img_data.get('name') or cid.split('/')[-1]
+                    if cid == target_str or cname == target_str or cid.endswith(target_str) or target_str.endswith(cname):
+                        self.tree.set(item, "status", status_text)
+                        if tag:
+                            self.tree.item(item, tags=(tag,))
+                        elif status_text == u"✓ Carregado":
+                            self.tree.item(item, tags=("loaded",))
+                        elif u"Na Fila" in status_text:
+                            self.tree.item(item, tags=("queued",))
+                        elif u"..." in status_text or u"Baixando" in status_text:
+                            self.tree.item(item, tags=("downloading",))
+                        elif u"Erro" in status_text or u"Falha" in status_text:
+                            self.tree.item(item, tags=("error",))
+                        else:
+                            self.tree.item(item, tags=())
+                        break
+        self.post_to_gui(_update)
+
+    def check_image_loaded_status(self, short_name):
+        """Verifica se uma cena ja esta presente em qualquer camada raster do TOC do ArcMap"""
+        try:
+            rasters = self.arcmap_context.get('raster_layers', [])
+            target = unicode(short_name).strip().lower() if sys.version_info[0] < 3 else str(short_name).strip().lower()
+            for r in rasters:
+                r_layer = r.split('\\')[-1].strip().lower()
+                if r_layer == target or r_layer.startswith(target) or target in r_layer:
+                    return u"✓ Carregado"
+        except Exception:
+            pass
+        return u"-"
+
+    def refresh_tree_status_columns(self):
+        """Atualiza a coluna de status de todas as imagens listadas na tabela com base no TOC atual"""
+        if not hasattr(self, 'tree') or not self.images_cache:
+            return
+        children = self.tree.get_children()
+        for idx, item in enumerate(children):
+            if idx < len(self.images_cache):
+                cur_status = self.tree.set(item, "status")
+                if cur_status == u"Baixando..." or cur_status == u"Na Fila":
+                    continue
+                img_data = self.images_cache[idx]
+                sname = img_data.get('name') or img_data.get('id', '').split('/')[-1]
+                new_st = self.check_image_loaded_status(sname)
+                self.tree.set(item, "status", new_st)
+                if new_st == u"✓ Carregado":
+                    self.tree.item(item, tags=("loaded",))
+                else:
+                    self.tree.item(item, tags=())
+
+    def find_existing_layer_in_group(self, short_name, comp, group_name):
+        """Verifica se uma cena ja existe carregada no grupo alvo do ArcMap.
+        Retorna o longName da camada existente se encontrada, ou None.
+        Camadas de pré-visualização (previa_) sao explicitamente ignoradas.
+        """
+        try:
+            self.sync_arcmap_context()
+            rasters = self.arcmap_context.get('raster_layers', [])
+            target_short = unicode(short_name).strip().lower() if sys.version_info[0] < 3 else str(short_name).strip().lower()
+            target_title = ("%s_%s" % (short_name, comp)).lower()
+            target_grp = unicode(group_name).strip().lower() if (group_name and unicode(group_name).strip()) else None
+
+            for r in rasters:
+                if "\\" in r:
+                    parts = r.split("\\")
+                    r_group = parts[0].strip().lower()
+                    r_layer = parts[-1].strip().lower()
+                else:
+                    r_group = None
+                    r_layer = r.strip().lower()
+
+                # Ignorar pré-visualizações para nao confundir com a imagem final
+                if r_layer.startswith("previa_") or (r_group and "pre-visualizacoes" in r_group):
+                    continue
+
+                group_matches = False
+                if target_grp:
+                    if r_group and r_group == target_grp:
+                        group_matches = True
+                else:
+                    if r_group is None:
+                        group_matches = True
+
+                if group_matches:
+                    if r_layer == target_title or r_layer == target_short or r_layer.startswith(target_short):
+                        return r  # Retorna o longName original para replace_layer
+        except Exception as e:
+            print("Erro verificando camada existente no grupo:", e)
+        return None
+
+    def update_action_buttons_state(self):
+        """Gerencia de forma centralizada e sem efeitos colaterais o estado
+        de todos os botoes de acao conforme a selecao da tabela e o status de download."""
+        try:
+            # 1. Watchdog das threads de download e worker da fila
+            worker_alive = hasattr(self, 'download_worker_thread') and self.download_worker_thread is not None and self.download_worker_thread.is_alive()
+            single_alive = hasattr(self, 'download_thread') and self.download_thread is not None and self.download_thread.is_alive()
+            q_empty = hasattr(self, 'download_queue') and self.download_queue.empty()
+            if not worker_alive and not single_alive and q_empty:
+                self.is_downloading = False
+                self.download_worker_thread = None
+                self.download_thread = None
+
+            # 2. Obter contagem de itens selecionados
+            selected_ids = self.get_all_selected_image_ids() if hasattr(self, 'tree') else []
+            count = len(selected_ids)
+
+            # 3. Verificar raster no TOC
+            has_toc_raster = False
+            if hasattr(self, 'cbo_toc_rasters'):
+                cur_toc = self.cbo_toc_rasters.get().strip()
+                if cur_toc and cur_toc not in ("Nenhuma camada raster no TOC", "Nenhuma camada encontrada"):
+                    has_toc_raster = True
+
+            is_dl = getattr(self, 'is_downloading', False)
+
+            # 4. Botao Carregar / Enfileirar no ArcMap
+            if hasattr(self, 'btn_add_toc'):
+                if is_dl:
+                    self.btn_add_toc.config(
+                        text=u"[ + Adicionar à Fila ]",
+                        state=tk.NORMAL if count >= 1 else tk.DISABLED
+                    )
+                else:
+                    self.btn_add_toc.config(
+                        text=u"[ Carregar no ArcMap ]",
+                        state=tk.NORMAL if count >= 1 else tk.DISABLED
+                    )
+
+            # 5. Botao Substituir no TOC
+            if hasattr(self, 'btn_replace_toc'):
+                if is_dl:
+                    self.btn_replace_toc.config(
+                        text=u"[ + Enfileirar Substituição ]",
+                        state=tk.NORMAL if (count == 1 and has_toc_raster) else tk.DISABLED
+                    )
+                else:
+                    self.btn_replace_toc.config(
+                        text=u"[ Substituir no TOC ]",
+                        state=tk.NORMAL if (count == 1 and has_toc_raster) else tk.DISABLED
+                    )
+
+            # 6. Outros botoes
+            if hasattr(self, 'btn_apply_comp_toc'):
+                self.btn_apply_comp_toc.config(state=tk.NORMAL if (has_toc_raster and not is_dl) else tk.DISABLED)
+
+            if hasattr(self, 'btn_apply_stretch'):
+                self.btn_apply_stretch.config(state=tk.NORMAL)
+
+        except Exception as e:
+            print("Erro ao atualizar estado dos botoes:", e)
 
     def _deferred_init(self):
         self._schedule_poll()
@@ -1082,7 +1343,7 @@ class GEEPluginWindow(object):
             return
         self.sync_arcmap_context()
         if self._alive:
-            self.root.after(2000, self._poll_arcmap_context)
+            self.root.after(350, self._poll_arcmap_context)
 
     def sync_arcmap_context(self):
         ctx = gee_bridge.read_arcmap_context()
@@ -1120,7 +1381,7 @@ class GEEPluginWindow(object):
         # Badge de Versao bem visivel
         self.lbl_v_badge = tk.Label(
             self.top_frame,
-            text=u" v1.6 ",
+            text=u" v1.7 ",
             font=("Segoe UI", 9, "bold"),
             bg="#1b4f72",
             fg="#ffffff",
@@ -1326,17 +1587,26 @@ class GEEPluginWindow(object):
         table_frame = ttk.LabelFrame(right_frame, text=u" 2. Imagens Disponiveis (Selecione uma ou varias com Ctrl / Shift) ", padding=6)
         table_frame.pack(fill=tk.BOTH, expand=True, side=tk.TOP, pady=(0, 4))
 
-        cols = ("date", "cloud", "tile", "name")
+        cols = ("date", "cloud", "tile", "name", "status")
         self.tree = ttk.Treeview(table_frame, columns=cols, show="headings", selectmode="extended")
-        self.tree.heading("date", text="Data / Hora")
-        self.tree.heading("cloud", text="Nuvens (%)")
-        self.tree.heading("tile", text="Tile / P-R")
-        self.tree.heading("name", text="Nome da Cena")
+        self.tree.heading("date", text=u"Data / Hora")
+        self.tree.heading("cloud", text=u"Nuvens (%)")
+        self.tree.heading("tile", text=u"Tile / P-R")
+        self.tree.heading("name", text=u"Nome da Cena")
+        self.tree.heading("status", text=u"Status")
 
-        self.tree.column("date", width=130, anchor=tk.CENTER)
-        self.tree.column("cloud", width=75, anchor=tk.CENTER)
-        self.tree.column("tile", width=85, anchor=tk.CENTER)
-        self.tree.column("name", width=360, anchor=tk.W)
+        self.tree.column("date", width=125, anchor=tk.CENTER)
+        self.tree.column("cloud", width=70, anchor=tk.CENTER)
+        self.tree.column("tile", width=80, anchor=tk.CENTER)
+        self.tree.column("name", width=320, anchor=tk.W)
+        self.tree.column("status", width=95, anchor=tk.CENTER)
+
+        # Tags visuais de status na tabela
+        self.tree.tag_configure("loaded", background="#e8f8f5", foreground="#117a65")
+        self.tree.tag_configure("downloading", background="#fef9e7", foreground="#b7950b")
+        self.tree.tag_configure("queued", background="#ebf5fb", foreground="#1b4f72")
+        self.tree.tag_configure("preview", background="#f4ecf7", foreground="#6c3483")
+        self.tree.tag_configure("error", background="#fdedec", foreground="#922b21")
 
         tree_scroll = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=tree_scroll.set)
@@ -1345,35 +1615,22 @@ class GEEPluginWindow(object):
         tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.bind("<<TreeviewSelect>>", self.on_image_selected)
 
-        # Painel da Miniatura Sob Medida e Acoes de Carregamento
-        thumb_frame = ttk.LabelFrame(right_frame, text=u" 3. Pre-Visualizacao & Carregamento em Segundo Plano ", padding=8)
-        thumb_frame.pack(fill=tk.BOTH, expand=False, side=tk.BOTTOM)
+        # Painel de Carregamento de Imagens no ArcMap
+        load_frame = ttk.LabelFrame(right_frame, text=u" 3. Carregamento de Imagens no ArcMap ", padding=10)
+        load_frame.pack(fill=tk.X, expand=False, side=tk.BOTTOM, pady=(6, 0))
 
-        thumb_box = ttk.Frame(thumb_frame)
-        thumb_box.pack(fill=tk.X)
-
-        self.lbl_thumb = tk.Label(
-            thumb_box,
-            text=u"Nenhuma miniatura gerada.\nSelecione uma imagem na tabela e clique\nem '[ Gerar Miniatura ]'.",
-            width=36,
-            height=10,
-            bg="#f2f3f4",
-            relief=tk.SUNKEN
-        )
-        self.lbl_thumb.pack(side=tk.LEFT, padx=(0, 12), pady=2)
-
-        info_actions = ttk.Frame(thumb_box)
-        info_actions.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        info_actions = ttk.Frame(load_frame)
+        info_actions.pack(fill=tk.BOTH, expand=True)
 
         self.lbl_selected_title = ttk.Label(info_actions, text="Nenhuma imagem selecionada", font=("Segoe UI", 9, "bold"))
         self.lbl_selected_title.pack(anchor=tk.W, pady=1)
 
-        self.lbl_selected_info = ttk.Label(info_actions, text="Selecione cenas na tabela (use Ctrl/Shift para selecionar varias).", font=("Segoe UI", 8), foreground="#566573")
+        self.lbl_selected_info = ttk.Label(info_actions, text=u"Selecione uma ou mais cenas na tabela para carregar no ArcMap.", font=("Segoe UI", 8), foreground="#566573")
         self.lbl_selected_info.pack(anchor=tk.W, pady=1)
 
         # Agrupamento no TOC (Group Layer)
         grp_frame = ttk.Frame(info_actions)
-        grp_frame.pack(anchor=tk.W, fill=tk.X, pady=(3, 3))
+        grp_frame.pack(anchor=tk.W, fill=tk.X, pady=(4, 3))
 
         self.var_use_group = tk.BooleanVar(value=True)
         self.chk_group = ttk.Checkbutton(
@@ -1389,7 +1646,7 @@ class GEEPluginWindow(object):
 
         # Mapeamento e Substituicao de Camadas no TOC
         replace_frame = ttk.Frame(info_actions)
-        replace_frame.pack(anchor=tk.W, fill=tk.X, pady=(2, 4))
+        replace_frame.pack(anchor=tk.W, fill=tk.X, pady=(3, 4))
 
         ttk.Label(replace_frame, text="Mapear/Substituir no TOC:", font=("Segoe UI", 8)).pack(side=tk.LEFT, padx=(0, 4))
         self.cbo_toc_rasters = ttk.Combobox(replace_frame, state="readonly", width=22)
@@ -1419,15 +1676,9 @@ class GEEPluginWindow(object):
         )
         self.btn_apply_stretch.pack(side=tk.LEFT)
 
-        # Botoes de Acao
+        # Botoes de Acao Principais
         btn_bar = ttk.Frame(info_actions)
-        btn_bar.pack(anchor=tk.W, pady=4)
-
-        self.btn_gen_thumb = ttk.Button(btn_bar, text="[ Gerar Miniatura ]", command=self.on_refresh_thumb_clicked)
-        self.btn_gen_thumb.pack(side=tk.LEFT, padx=(0, 6))
-
-        self.btn_open_browser = ttk.Button(btn_bar, text="[ Abrir no Navegador ]", command=self.on_open_browser_clicked)
-        self.btn_open_browser.pack(side=tk.LEFT, padx=(0, 6))
+        btn_bar.pack(anchor=tk.W, pady=(6, 2))
 
         self.btn_add_toc = ttk.Button(
             btn_bar,
@@ -1437,16 +1688,37 @@ class GEEPluginWindow(object):
         )
         self.btn_add_toc.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.btn_mosaic_toc = ttk.Button(
-            btn_bar,
-            text="[ Criar Mosaico ]",
-            command=self.on_load_mosaic_background
-        )
-        self.btn_mosaic_toc.pack(side=tk.LEFT)
+        # 3. Barra de Status Inferior com Progresso e Percentual
+        status_bar_frame = ttk.Frame(self.root, relief=tk.SUNKEN, padding=(4, 2))
+        status_bar_frame.pack(fill=tk.X, side=tk.BOTTOM)
 
-        # 3. Barra de Status Inferior com Progresso
-        self.lbl_progress = ttk.Label(self.root, text=u"Pronto. (CGMA ArcGEE Explorer v1.6 - Resolução Nativa Estrita 100%)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
-        self.lbl_progress.pack(fill=tk.X, side=tk.BOTTOM)
+        self.lbl_progress = ttk.Label(
+            status_bar_frame,
+            text=u"Pronto. (CGMA ArcGEE Explorer v1.7 - Resolução Nativa Estrita 100%)",
+            anchor=tk.W
+        )
+        self.lbl_progress.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(2, 6))
+
+        self.pbar = ttk.Progressbar(
+            status_bar_frame,
+            orient=tk.HORIZONTAL,
+            mode='determinate',
+            length=180,
+            maximum=100
+        )
+        self.pbar.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.lbl_pct = ttk.Label(
+            status_bar_frame,
+            text="0%",
+            width=5,
+            anchor=tk.CENTER,
+            font=("Segoe UI", 8, "bold")
+        )
+        self.lbl_pct.pack(side=tk.LEFT, padx=(0, 4))
+
+        self.cbo_toc_rasters.bind("<<ComboboxSelected>>", lambda e: self.update_action_buttons_state())
+        self.update_action_buttons_state()
 
     def update_map_scale_display(self):
         scale = self.arcmap_context.get('scale')
@@ -1510,6 +1782,8 @@ class GEEPluginWindow(object):
             else:
                 self.cbo_toc_rasters['values'] = ["Nenhuma camada raster no TOC"]
                 self.cbo_toc_rasters.current(0)
+            self.refresh_tree_status_columns()
+            self.update_action_buttons_state()
         except Exception as e:
             print("Erro ao atualizar camadas raster do TOC:", e)
 
@@ -1629,15 +1903,6 @@ class GEEPluginWindow(object):
             else:
                 self.lbl_custom_bands.config(text=u"Bandas Personalizadas (opcional, separadas por vírgula):")
 
-        # Nao carregar miniatura automaticamente; apenas sob demanda via clique no botao
-        if self.get_selected_image_id():
-            self.lbl_thumb.config(
-                text=u"Composição alterada.\nClique em '[ Gerar Miniatura ]'\npara visualizar.",
-                image=""
-            )
-            self.thumb_photo = None
-            self.current_thumb_url = None
-
     def async_check_gee(self):
         def do_check():
             resp = gee_bridge.check_gee()
@@ -1746,6 +2011,14 @@ class GEEPluginWindow(object):
                 self.on_configure_project()
             return
 
+        # Failsafe: se nao ha download ativo, garante que botoes estejam liberados
+        worker_alive = (hasattr(self, 'download_worker_thread') and self.download_worker_thread is not None and self.download_worker_thread.is_alive()) or \
+                       (hasattr(self, 'download_thread') and self.download_thread is not None and self.download_thread.is_alive())
+        if not worker_alive:
+            self.is_downloading = False
+            self.queued_ids.clear()
+            self.current_downloading_ids.clear()
+
         self.sync_arcmap_context()
 
         st = self.var_spatial_type.get()
@@ -1762,7 +2035,8 @@ class GEEPluginWindow(object):
         e_date = normalize_date(self.txt_end_date.get())
 
         self.btn_search.config(state=tk.DISABLED)
-        self.lbl_progress.config(text="Iniciando busca no Google Earth Engine...")
+        self.set_progress(0, "Iniciando busca no Google Earth Engine...")
+        self.update_action_buttons_state()
 
         def run_search_thread():
             try:
@@ -1771,12 +2045,12 @@ class GEEPluginWindow(object):
                     lyr_name = self.cbo_layers.get()
                     if lyr_name and lyr_name != "Nenhuma camada encontrada":
                         buf = float(self.settings.get('aoi_buffer_meters', 0.0) if hasattr(self, 'settings') else 0.0)
-                        self.post_to_gui(lambda: self.lbl_progress.config(text="Exportando AOI da camada '%s' do ArcMap..." % lyr_name))
+                        self.post_to_gui(lambda: self.set_progress(0, "Exportando AOI da camada '%s' do ArcMap..." % lyr_name))
                         rep = gee_bridge.send_arcmap_command({'action': 'export_aoi', 'layer_name': lyr_name, 'buffer_meters': buf}, timeout=15)
                         if rep.get('success'):
                             g_file = rep.get('file')
 
-                self.post_to_gui(lambda: self.lbl_progress.config(text="Buscando imagens no catalogo do Google Earth Engine... Aguarde."))
+                self.post_to_gui(lambda: self.set_progress(0, "Buscando imagens no catalogo do Google Earth Engine... Aguarde."))
                 resp = gee_bridge.search_images(
                     sensor=sensor,
                     start_date=s_date,
@@ -1794,7 +2068,8 @@ class GEEPluginWindow(object):
                     if not resp.get('success'):
                         err_msg = resp.get('message', 'Erro desconhecido')
                         messagebox.showerror("Erro de Busca", err_msg, parent=self.root)
-                        self.lbl_progress.config(text="Falha na busca: " + err_msg[:60])
+                        self.set_progress(0, "Falha na busca: " + err_msg[:60])
+                        self.update_action_buttons_state()
                         return
 
                     images = resp.get('images', [])
@@ -1802,20 +2077,37 @@ class GEEPluginWindow(object):
 
                     for img in images:
                         tile_str = img.get('mgrs') or ("%s/%s" % (img.get('path', ''), img.get('row', '')) if img.get('path') else '')
-                        self.tree.insert("", tk.END, values=(
+                        short_name = img.get('name') or img.get('id', '').split('/')[-1]
+                        full_img_id = img.get('id', '')
+
+                        if full_img_id in getattr(self, 'current_downloading_ids', set()):
+                            status_val = u"Baixando..."
+                            tag_val = "downloading"
+                        elif full_img_id in getattr(self, 'queued_ids', set()):
+                            status_val = u"Na Fila"
+                            tag_val = "queued"
+                        else:
+                            status_val = self.check_image_loaded_status(short_name)
+                            tag_val = "loaded" if (status_val == u"✓ Carregado") else ""
+
+                        item_id = self.tree.insert("", tk.END, values=(
                             img.get('date'),
                             "%s%%" % img.get('cloud_pct'),
                             tile_str,
-                            img.get('name') or img.get('id', '').split('/')[-1]
+                            short_name,
+                            status_val
                         ))
+                        if tag_val:
+                            self.tree.item(item_id, tags=(tag_val,))
 
                     count = len(images)
-                    self.lbl_progress.config(text="Busca concluida: %d imagens encontradas." % count)
+                    self.set_progress(0, "Busca concluida: %d imagens encontradas." % count)
                     if count > 0:
                         first_item = self.tree.get_children()[0]
                         self.tree.selection_set(first_item)
                         self.on_image_selected()
                     else:
+                        self.update_action_buttons_state()
                         messagebox.showinfo("Nenhum Resultado", "Nenhuma imagem foi encontrada para os filtros e periodo especificados.", parent=self.root)
 
                 self.post_to_gui(update_tree)
@@ -1823,12 +2115,14 @@ class GEEPluginWindow(object):
                 err_text = str(e)
                 def show_err():
                     messagebox.showerror("Erro Inesperado", err_text, parent=self.root)
-                    self.lbl_progress.config(text="Erro: " + err_text[:60])
+                    self.set_progress(0, "Erro: " + err_text[:60])
+                    self.update_action_buttons_state()
                 self.post_to_gui(show_err)
             finally:
                 def reenable():
                     try:
                         self.btn_search.config(state=tk.NORMAL)
+                        self.update_action_buttons_state()
                     except Exception:
                         pass
                 self.post_to_gui(reenable)
@@ -1841,6 +2135,7 @@ class GEEPluginWindow(object):
         if count == 0:
             self.lbl_selected_title.config(text="Nenhuma imagem selecionada")
             self.lbl_selected_info.config(text="Selecione uma ou mais imagens na tabela.")
+            self.update_action_buttons_state()
             return
 
         if count == 1:
@@ -1857,72 +2152,13 @@ class GEEPluginWindow(object):
                             img.get('mgrs') or ("%s/%s" % (img.get('path', ''), img.get('row', '')))
                         )
                     )
-                    break
-            # Nao carregar miniatura automaticamente; apenas se clicado no botao [ Gerar Miniatura ]
-            self.lbl_thumb.config(
-                text=u"Cena selecionada.\nClique em '[ Gerar Miniatura ]'\npara carregar pré-visualização.",
-                image=""
-            )
-            self.thumb_photo = None
-            self.current_thumb_url = None
         else:
             self.lbl_selected_title.config(text="%d imagens selecionadas" % count)
             self.lbl_selected_info.config(
-                text=u"Multi-seleção ativa. Você pode carregar todas juntas ou criar um mosaico único."
+                text=u"Multi-seleção ativa (%d cenas). Clique em '[ Carregar no ArcMap ]' para adicionar à fila." % count
             )
-            self.lbl_thumb.config(
-                text=u"Multi-seleção (%d cenas).\nSelecione 1 imagem para miniatura." % count,
-                image=""
-            )
-            self.thumb_photo = None
-            self.current_thumb_url = None
 
-    def on_refresh_thumb_clicked(self):
-        full_id = self.get_selected_image_id()
-        if not full_id:
-            messagebox.showinfo(u"Aviso", u"Selecione uma imagem na tabela para gerar a miniatura.", parent=self.root)
-            return
-
-        sensor = self.get_selected_sensor_code()
-        comp = self.get_selected_composition_code()
-
-        self.lbl_thumb.config(text=u"Carregando miniatura sob medida...\nAguarde alguns segundos.", image="")
-        self.btn_gen_thumb.config(state=tk.DISABLED)
-        self.lbl_progress.config(text=u"Gerando miniatura sob medida no Google Earth Engine...")
-
-        def run_thumb():
-            tmp_png = os.path.join(tempfile.gettempdir(), "gee_thumb.png")
-            resp = gee_bridge.get_thumbnail(full_id, sensor, comp, tmp_png)
-
-            def show_thumb():
-                self.btn_gen_thumb.config(state=tk.NORMAL)
-                if resp.get('success'):
-                    self.current_thumb_url = resp.get('url')
-                    gif_file = resp.get('gif') or resp.get('file')
-                    if gif_file and os.path.exists(gif_file):
-                        try:
-                            self.thumb_photo = tk.PhotoImage(file=gif_file)
-                            self.lbl_thumb.config(image=self.thumb_photo, text="")
-                            self.lbl_progress.config(text="Miniatura gerada com sucesso!")
-                            return
-                        except Exception as e:
-                            print("Erro exibindo foto:", e)
-                    self.lbl_thumb.config(text="Miniatura gerada com sucesso!\nClique ao lado para abrir no navegador.", image="")
-                    self.lbl_progress.config(text="Miniatura disponivel.")
-                else:
-                    err_msg = resp.get('message', 'Erro')
-                    self.lbl_thumb.config(text="Falha ao gerar miniatura:\n" + err_msg[:50], image="")
-                    self.lbl_progress.config(text="Erro na miniatura: " + err_msg[:60])
-
-            self.post_to_gui(show_thumb)
-
-        threading.Thread(target=run_thumb).start()
-
-    def on_open_browser_clicked(self):
-        if self.current_thumb_url:
-            webbrowser.open(self.current_thumb_url)
-        else:
-            messagebox.showinfo("Aviso", "Nenhuma miniatura ativa no momento. Selecione uma imagem primeiro.", parent=self.root)
+        self.update_action_buttons_state()
 
     def validate_scale_and_get_bbox(self):
         """Valida se a escala do ArcMap esta dentro de 1:500.000 para busca por extensao.
@@ -1956,24 +2192,38 @@ class GEEPluginWindow(object):
                 "Deseja ajustar o zoom do ArcMap automaticamente para 1:500.000 para continuar?"
             ).format(scale)
             if messagebox.askyesno("Limite de Escala (1:500.000)", msg, parent=self.root):
-                gee_bridge.send_arcmap_command({'action': 'set_scale', 'scale': MAX_ALLOWED_SCALE})
-                self.sync_arcmap_context()
+                rep_scale = gee_bridge.send_arcmap_command({'action': 'set_scale', 'scale': MAX_ALLOWED_SCALE}, timeout=10)
+                if rep_scale.get('success'):
+                    self.sync_arcmap_context()
+                else:
+                    messagebox.showwarning(u"Aviso Escala", u"Não foi possível ajustar a escala no ArcMap: " + rep_scale.get('message', ''), parent=self.root)
+                    return False, None, False
             else:
                 return False, None, False
 
         bbox = self.arcmap_context.get('bbox')
         if not bbox:
-            rep = gee_bridge.send_arcmap_command({'action': 'refresh_context'}, timeout=5)
+            self.sync_arcmap_context()
+            bbox = self.arcmap_context.get('bbox')
+        if not bbox:
+            rep = gee_bridge.send_arcmap_command({'action': 'refresh_context'}, timeout=4)
             if rep.get('success') and rep.get('context'):
                 self.arcmap_context = rep['context']
                 bbox = self.arcmap_context.get('bbox')
+
         if not bbox:
-            bbox = [-61.64, -18.04, -50.22, -7.35]
+            messagebox.showwarning(
+                u"Extensão ArcMap Indefinida",
+                u"Não foi possível obter a extensão geográfica atual do ArcMap.\n\n"
+                u"Verifique se o mapa no ArcMap possui uma camada visível ou sistema de coordenadas definido, ou utilize uma camada vetorial (AOI).",
+                parent=self.root
+            )
+            return False, None, False
 
         return True, bbox, False
 
     def on_load_selected_background(self):
-        """Carrega todas as imagens selecionadas no ArcMap em segundo plano"""
+        """Carrega todas as imagens selecionadas no ArcMap em segundo plano com deteccao de duplicatas no mesmo grupo"""
         ids = self.get_all_selected_image_ids()
         if not ids:
             messagebox.showwarning("Aviso", "Selecione pelo menos uma imagem na tabela.", parent=self.root)
@@ -1983,20 +2233,46 @@ class GEEPluginWindow(object):
         if not ok:
             return
 
-        self._start_background_download(ids, is_mosaic=False, bbox=bbox, auto_zoom=auto_zoom)
+        comp = self.get_selected_composition_code()
+        group_name = self.txt_group_name.get().strip() if self.var_use_group.get() else None
 
-    def on_load_mosaic_background(self):
-        """Cria e carrega mosaico das imagens selecionadas em segundo plano"""
-        ids = self.get_all_selected_image_ids()
-        if not ids:
-            messagebox.showwarning("Aviso", "Selecione pelo menos uma imagem na tabela para o mosaico.", parent=self.root)
+        self.sync_arcmap_context()
+
+        # Deteccao de imagens ja carregadas no mesmo grupo
+        replace_map = {}
+        ids_to_process = []
+
+        for img_id in ids:
+            short_name = img_id.split('/')[-1]
+            existing_target = self.find_existing_layer_in_group(short_name, comp, group_name)
+
+            if existing_target:
+                grp_display = group_name if group_name else u"TOC principal"
+                resp = messagebox.askyesno(
+                    u"Camada Já Carregada",
+                    u"A imagem '%s' já está carregada no grupo '%s'.\n\n"
+                    u"Deseja carregar novamente e substituir a camada existente?" % (short_name, grp_display),
+                    parent=self.root
+                )
+                if resp:
+                    replace_map[img_id] = existing_target
+                    ids_to_process.append(img_id)
+                else:
+                    self.set_progress(None, u"Imagem '%s' mantida sem alteração." % short_name)
+                    continue
+            else:
+                ids_to_process.append(img_id)
+
+        if not ids_to_process:
+            self.set_progress(0, u"Carregamento cancelado. Nenhuma imagem a processar.")
             return
 
-        ok, bbox, auto_zoom = self.validate_scale_and_get_bbox()
-        if not ok:
-            return
-
-        self._start_background_download(ids, is_mosaic=True, bbox=bbox, auto_zoom=auto_zoom)
+        self._start_background_download(
+            ids_to_process,
+            bbox=bbox,
+            replace_map=replace_map,
+            auto_zoom=auto_zoom
+        )
 
     def on_replace_selected_background(self):
         """Substitui uma camada selecionada no TOC pela imagem atual do GEE"""
@@ -2006,7 +2282,7 @@ class GEEPluginWindow(object):
             return
 
         target_layer = self.cbo_toc_rasters.get()
-        if not target_layer or target_layer == "Nenhuma camada raster no TOC":
+        if not target_layer or target_layer in ("Nenhuma camada raster no TOC", "Nenhuma camada encontrada"):
             messagebox.showwarning("Aviso", "Selecione qual camada do TOC voce deseja substituir na lista ao lado.", parent=self.root)
             return
 
@@ -2014,19 +2290,25 @@ class GEEPluginWindow(object):
         if not ok:
             return
 
-        self._start_background_download(ids[:1], is_mosaic=False, bbox=bbox, replace_target=target_layer, auto_zoom=auto_zoom)
+        replace_map = {ids[0]: target_layer}
+        self._start_background_download(
+            ids[:1],
+            bbox=bbox,
+            replace_map=replace_map,
+            auto_zoom=auto_zoom
+        )
 
     def on_apply_comp_to_toc_layer(self):
         """Aplica a composicao de bandas selecionada na combobox diretamente na camada selecionada no TOC"""
         target_layer = self.cbo_toc_rasters.get()
-        if not target_layer or target_layer == "Nenhuma camada raster no TOC":
+        if not target_layer or target_layer in ("Nenhuma camada raster no TOC", "Nenhuma camada encontrada"):
             messagebox.showwarning("Aviso", "Selecione qual camada do TOC voce deseja alterar na lista ao lado.", parent=self.root)
             return
 
         sensor = self.get_selected_sensor_code()
         comp = self.get_selected_composition_code()
 
-        self.lbl_progress.config(text="Alterando composicao da camada '%s' para %s no ArcMap..." % (target_layer, comp))
+        self.set_progress(10, "Alterando composicao da camada '%s' para %s no ArcMap..." % (target_layer, comp))
         self.btn_apply_comp_toc.config(state=tk.DISABLED)
 
         def worker():
@@ -2040,22 +2322,25 @@ class GEEPluginWindow(object):
 
                 def finish():
                     if rep.get('success'):
-                        self.lbl_progress.config(text="Composicao alterada com sucesso!")
+                        self.set_progress(100, "Composicao alterada com sucesso!")
                         messagebox.showinfo("Sucesso", rep.get('message', 'Composicao alterada no ArcMap!'), parent=self.root)
                     else:
                         err_m = rep.get('message', 'Falha ao alterar composicao')
-                        self.lbl_progress.config(text="Falha: " + err_m[:50])
+                        self.set_progress(0, "Falha: " + err_m[:50])
                         messagebox.showwarning("Aviso ArcMap", "ArcMap retornou: " + err_m, parent=self.root)
 
                 self.post_to_gui(finish)
             except Exception as ex:
                 def on_err():
+                    self.set_progress(0, "Erro: " + str(ex)[:50])
                     messagebox.showerror("Erro", str(ex), parent=self.root)
                 self.post_to_gui(on_err)
             finally:
-                self.post_to_gui(lambda: self.btn_apply_comp_toc.config(state=tk.NORMAL))
+                self.post_to_gui(self.update_action_buttons_state)
 
-        threading.Thread(target=worker).start()
+        t = threading.Thread(target=worker)
+        t.daemon = True
+        t.start()
 
     def on_apply_stretch_to_toc(self):
         """Garante e aplica as configurações ativas de Stretch e DRA nas camadas raster do ArcMap"""
@@ -2064,7 +2349,7 @@ class GEEPluginWindow(object):
             target_layer = None
 
         desc = (u"na camada '%s'" % target_layer) if target_layer else u"em todas as camadas raster do TOC"
-        self.lbl_progress.config(text=u"Aplicando e garantindo configurações de stretch %s..." % desc)
+        self.set_progress(10, u"Aplicando e garantindo configurações de stretch %s..." % desc)
         if hasattr(self, 'btn_apply_stretch'):
             self.btn_apply_stretch.config(state=tk.DISABLED)
 
@@ -2074,29 +2359,28 @@ class GEEPluginWindow(object):
                 def finish():
                     if rep.get('success'):
                         msg = rep.get('message', u'Configurações de stretch garantidas com sucesso!')
-                        self.lbl_progress.config(text=msg)
+                        self.set_progress(100, msg)
                         messagebox.showinfo(u"Stretch Garantido", msg, parent=self.root)
                     else:
                         err_m = rep.get('message', u'Falha ao aplicar stretch.')
-                        self.lbl_progress.config(text=u"Aviso: " + err_m[:50])
+                        self.set_progress(0, u"Aviso: " + err_m[:50])
                         messagebox.showwarning(u"Aviso ArcMap", err_m, parent=self.root)
                 self.post_to_gui(finish)
             except Exception as ex:
                 def on_err():
+                    self.set_progress(0, u"Erro: " + str(ex)[:50])
                     messagebox.showerror(u"Erro", str(ex), parent=self.root)
                 self.post_to_gui(on_err)
             finally:
-                def reenable():
-                    if hasattr(self, 'btn_apply_stretch'):
-                        self.btn_apply_stretch.config(state=tk.NORMAL)
-                self.post_to_gui(reenable)
+                self.post_to_gui(self.update_action_buttons_state)
 
-        threading.Thread(target=worker).start()
+        t = threading.Thread(target=worker)
+        t.daemon = True
+        t.start()
 
-    def _start_background_download(self, image_ids, is_mosaic, bbox, replace_target=None, auto_zoom=False):
-        if self.is_downloading:
-            messagebox.showwarning("Em Andamento", "Ja existe um carregamento em segundo plano em execucao.", parent=self.root)
-            return
+    def _enqueue_download_task(self, image_ids, bbox, replace_map=None, auto_zoom=False):
+        if replace_map is None:
+            replace_map = {}
 
         sensor = self.get_selected_sensor_code()
         comp = self.get_selected_composition_code()
@@ -2129,11 +2413,10 @@ class GEEPluginWindow(object):
                 else:
                     req_scale = 30.0
 
-            # Determinar numero de bandas estimado
             comp_is_index = comp in ['NDVI', 'NDWI', 'NDMI', 'NBR', 'EVI', 'SAVI', 'CUSTOM_MATH']
             if comp_is_index:
                 n_b = 1
-                bpp = 4  # Float32
+                bpp = 4
             elif load_mode == 'multiband':
                 if custom_bands:
                     n_b = len([b for b in custom_bands.split(',') if b.strip()])
@@ -2145,10 +2428,10 @@ class GEEPluginWindow(object):
                     n_b = 6
                 else:
                     n_b = 3
-                bpp = 2 * n_b  # Int16 por banda
+                bpp = 2 * n_b
             else:
                 n_b = 3
-                bpp = 3  # RGB 8-bit
+                bpp = 3
 
             minx, miny, maxx, maxy = bbox
             lat_center = (miny + maxy) / 2.0
@@ -2156,12 +2439,14 @@ class GEEPluginWindow(object):
             width_m = abs(maxx - minx) * 111320.0 * math.cos(lat_rad)
             height_m = abs(maxy - miny) * 110540.0
             area_m2 = max(width_m * height_m, 1000.0)
+            if len(image_ids) == 1:
+                max_single_m2 = 1.5e10 if sensor == "S2" else 3.5e10
+                area_m2 = min(area_m2, max_single_m2)
             est_bytes = (area_m2 / (req_scale * req_scale)) * bpp
             chunk_target = 32 * 1024 * 1024
             if est_bytes > chunk_target:
                 est_mb = round(est_bytes / (1024.0 * 1024.0), 1)
                 num_quads = max(1, int(math.ceil(est_bytes / float(chunk_target))))
-                # Limite maximo de seguranca de 120 quadrantes (~3.8 GB)
                 if num_quads > 120:
                     area_km2 = round(area_m2 / 1000000.0, 1)
                     messagebox.showerror(
@@ -2174,271 +2459,285 @@ class GEEPluginWindow(object):
                     )
                     return
 
-        # Obter informacao do Grupo na thread principal
         group_name = None
-        if not replace_target and self.var_use_group.get():
+        if self.var_use_group.get():
             g_val = self.txt_group_name.get().strip()
             if g_val:
                 group_name = g_val
 
-        self.is_downloading = True
-        self.btn_add_toc.config(state=tk.DISABLED)
-        self.btn_mosaic_toc.config(state=tk.DISABLED)
-        if hasattr(self, 'btn_replace_toc'):
-            self.btn_replace_toc.config(state=tk.DISABLED)
-        if hasattr(self, 'btn_apply_comp_toc'):
-            self.btn_apply_comp_toc.config(state=tk.DISABLED)
+        task = {
+            'image_ids': list(image_ids),
+            'bbox': bbox,
+            'replace_map': replace_map,
+            'auto_zoom': auto_zoom,
+            'sensor': sensor,
+            'comp': comp,
+            'custom_bands': custom_bands,
+            'load_mode': load_mode,
+            'pixel_size': pixel_size,
+            'group_name': group_name,
+            'geojson_file': geojson_file
+        }
+
+        is_already_running = getattr(self, 'is_downloading', False) and (
+            hasattr(self, 'download_worker_thread') and self.download_worker_thread is not None and self.download_worker_thread.is_alive()
+        )
+
+        for i_id in image_ids:
+            self.queued_ids.add(i_id)
+            if is_already_running:
+                short = i_id.split('/')[-1]
+                self.set_row_status(short, u"Na Fila", tag="queued")
+
+        self.download_queue.put(task)
+
+        if is_already_running:
+            q_size = self.download_queue.qsize()
+            msg = u"+ %d item(ns) adicionado(s) à fila! (%d tarefa(s) aguardando)" % (len(image_ids), q_size)
+            self.set_progress(None, msg)
+            self.update_action_buttons_state()
+        else:
+            self.is_downloading = True
+            self.update_action_buttons_state()
+            self.download_worker_thread = threading.Thread(target=self._run_download_queue_worker)
+            self.download_worker_thread.daemon = True
+            self.download_worker_thread.start()
+
+    def _start_background_download(self, image_ids, bbox=None, replace_map=None, auto_zoom=False, is_mosaic=False):
+        """Enfileira a solicitacao de carregamento sem bloquear novas adições à fila"""
+        self._enqueue_download_task(image_ids, bbox=bbox, replace_map=replace_map, auto_zoom=auto_zoom)
+
+    def _run_download_queue_worker(self):
+        """Worker em segundo plano que executa tarefas da fila sequencialmente"""
+        errors_occurred = []
+        try:
+            while self._alive:
+                try:
+                    task = self.download_queue.get_nowait()
+                except queue_mod.Empty:
+                    break
+
+                self.is_downloading = True
+                self.post_to_gui(self.update_action_buttons_state)
+
+                try:
+                    self._execute_single_download_task(task)
+                except Exception as ex:
+                    import traceback
+                    tb = traceback.format_exc()
+                    print("Erro executando tarefa da fila:\n" + tb)
+                    errors_occurred.append(str(ex))
+                    for i_id in task.get('image_ids', []):
+                        short = i_id.split('/')[-1]
+                        self.set_row_status(short, u"Falha", tag="error")
+                    self.post_to_gui(lambda m=str(ex): messagebox.showerror(
+                        u"Erro de Execução",
+                        u"Falha ao executar download da cena:\n\n%s" % m,
+                        parent=self.root
+                    ))
+                finally:
+                    self.download_queue.task_done()
+
+        finally:
+            def finish_queue():
+                if self.download_queue.empty():
+                    self.is_downloading = False
+                    self.download_worker_thread = None
+                    self.queued_ids.clear()
+                    self.current_downloading_ids.clear()
+                    self.refresh_toc_rasters()
+                    self.update_action_buttons_state()
+                    if errors_occurred:
+                        self.set_progress(0, u"Aviso: Ocorreu erro no processamento (%s)" % errors_occurred[0][:40])
+                    else:
+                        self.set_progress(100, u"Concluído! Todas as tarefas da fila foram processadas com sucesso.")
+
+            self.post_to_gui(finish_queue)
+
+    def _execute_single_download_task(self, task):
+        image_ids = task['image_ids']
+        bbox = task['bbox']
+        replace_map = task.get('replace_map', {})
+        auto_zoom = task.get('auto_zoom', False)
+        sensor = task['sensor']
+        comp = task['comp']
+        custom_bands = task.get('custom_bands')
+        load_mode = task.get('load_mode', 'multiband')
+        pixel_size = task.get('pixel_size')
+        group_name = task.get('group_name')
+        geojson_file = task.get('geojson_file')
 
         total = len(image_ids)
-        if replace_target:
-            self.lbl_progress.config(text="[Segundo Plano] Baixando imagem para substituir '%s' no TOC..." % replace_target)
-        elif est_bytes > 32 * 1024 * 1024:
-            est_mb = round(est_bytes / (1024.0 * 1024.0), 1)
-            quads = max(1, int(math.ceil(est_bytes / (32.0 * 1024.0 * 1024.0))))
-            self.lbl_progress.config(text=u"[Segundo Plano] Alta Resolução Nativa 100%% (~%.1f MB | %d quadrantes). Baixando e mesclando via GDAL..." % (est_mb, quads))
-        else:
-            self.lbl_progress.config(text="[Segundo Plano] Iniciando download de %d imagem(ns)..." % total)
+        for i_id in image_ids:
+            self.current_downloading_ids.add(i_id)
+            if i_id in self.queued_ids:
+                self.queued_ids.remove(i_id)
 
-        def worker():
-            loaded_count = 0
-            try:
-                if replace_target:
-                    # Substituicao de camada existente no TOC
-                    img_id = image_ids[0]
-                    short_name = img_id.split('/')[-1]
-                    layer_title = "%s_%s" % (short_name, comp)
-                    out_tif = os.path.join(tempfile.gettempdir(), "%s.tif" % layer_title)
+        settings = self.settings if hasattr(self, 'settings') else {}
+        system_cores = getattr(self, 'max_system_cores', 4)
+        use_multicore = bool(settings.get('multicore_enabled', True)) and (concurrent is not None)
+        max_cores = int(settings.get('multicore_cores', min(4, system_cores)))
 
-                    resp = gee_bridge.download_image(
-                        image_ids=[img_id],
-                        sensor=sensor,
-                        comp_code=comp,
-                        out_tif=out_tif,
-                        custom_bands=custom_bands,
-                        load_mode=load_mode,
-                        bbox=bbox,
-                        geojson_file=geojson_file,
-                        scale=pixel_size
-                    )
+        loaded_count = 0
 
-                    if resp.get('success'):
-                        tif_file = resp.get('file')
-                        self.post_to_gui(lambda: self.lbl_progress.config(text="Enviando comando para substituir camada no ArcMap..."))
-                        rep = gee_bridge.send_arcmap_command({
-                            'action': 'replace_layer',
-                            'file': tif_file,
-                            'target_layer': replace_target,
-                            'name': layer_title,
-                            'comp': comp,
-                            'sensor': sensor,
-                            'custom_bands': custom_bands
-                        }, timeout=120)
-                        if rep.get('success'):
-                            loaded_count = 1
-                        else:
-                            err_msg = rep.get('message', '')
-                            self.post_to_gui(lambda m=err_msg: messagebox.showwarning("Aviso ArcMap", "ArcMap retornou: " + m, parent=self.root))
-                    else:
-                        err = resp.get('message', 'Erro desconhecido ao baixar imagem.')
-                        self.post_to_gui(lambda m=err: messagebox.showerror("Erro ao Baixar", m, parent=self.root))
-                elif is_mosaic:
-                    # Mosaico unico com todas as imagens selecionadas
-                    first_name = image_ids[0].split('/')[-1]
-                    layer_title = "Mosaico_%s_%s_%s" % (sensor, comp, datetime.date.today().strftime("%Y%m%d"))
-                    out_tif = os.path.join(tempfile.gettempdir(), "%s.tif" % layer_title)
+        # Carregamento de imagens (Multicore paralelo para múltiplas imagens ou Sequencial)
+        if use_multicore and total > 1 and not replace_map:
+            num_workers = min(total, max_cores)
+            q_remaining = self.download_queue.qsize()
+            q_info = (u"[Fila: %d pendente(s)] " % q_remaining) if q_remaining > 0 else ""
+            self.set_progress(5, u"%s[Multicore %d threads] Baixando %d imagens em paralelo..." % (q_info, num_workers, total))
 
-                    self.post_to_gui(lambda: self.lbl_progress.config(
-                        text="[Segundo Plano] Gerando mosaico de %d imagens no GEE..." % total
-                    ))
+            def process_single_image(idx, img_id):
+                short_name = img_id.split('/')[-1]
+                layer_title = "%s_%s" % (short_name, comp)
+                out_tif = os.path.join(tempfile.gettempdir(), "%s.tif" % layer_title)
+                self.set_row_status(short_name, u"Baixando...", tag="downloading")
 
-                    resp = gee_bridge.download_image(
-                        image_ids=image_ids,
-                        sensor=sensor,
-                        comp_code=comp,
-                        out_tif=out_tif,
-                        custom_bands=custom_bands,
-                        load_mode=load_mode,
-                        bbox=bbox,
-                        geojson_file=geojson_file,
-                        scale=pixel_size
-                    )
+                resp = gee_bridge.download_image(
+                    image_ids=[img_id],
+                    sensor=sensor,
+                    comp_code=comp,
+                    out_tif=out_tif,
+                    custom_bands=custom_bands,
+                    load_mode=load_mode,
+                    bbox=bbox,
+                    geojson_file=geojson_file,
+                    scale=pixel_size
+                )
 
-                    if resp.get('success'):
-                        tif_file = resp.get('file')
-                        self.post_to_gui(lambda: self.lbl_progress.config(text="Enviando mosaico para o TOC do ArcMap..."))
+                if resp.get('success'):
+                    tif_file = resp.get('file')
+                    with self.ipc_lock:
                         rep = gee_bridge.send_arcmap_command({
                             'action': 'load_layer',
                             'file': tif_file,
                             'name': layer_title,
                             'group': group_name,
-                            'zoom': auto_zoom,
+                            'zoom': auto_zoom if (idx == 0) else False,
                             'comp': comp,
                             'sensor': sensor,
                             'custom_bands': custom_bands
                         }, timeout=120)
-                        if rep.get('success'):
-                            loaded_count = total
-                        else:
-                            err_msg = rep.get('message', '')
-                            self.post_to_gui(lambda m=err_msg: messagebox.showwarning("Aviso ArcMap", "ArcMap retornou: " + m, parent=self.root))
+
+                    if rep.get('success'):
+                        return True, short_name, None
                     else:
-                        err = resp.get('message', 'Erro desconhecido ao gerar mosaico.')
-                        self.post_to_gui(lambda m=err: messagebox.showerror("Erro Mosaico", m, parent=self.root))
+                        return False, short_name, rep.get('message', '')
                 else:
-                    # Carregar cada imagem selecionada individualmente
-                    # Verificar se aceleracao multicore esta ativada nas configuracoes
-                    settings = gee_bridge.load_plugin_settings()
-                    multicore_on = settings.get('multicore_enabled', True)
-                    core_count = int(settings.get('multicore_cores', 4))
+                    return False, short_name, resp.get('message', 'Erro ao baixar imagem.')
 
-                    if multicore_on and core_count > 1 and total > 1 and concurrent:
-                        num_workers = min(core_count, total)
-                        prog_msg = u"[Multicore] Baixando %d imagens em paralelo (%d threads)..." % (total, num_workers)
-                        self.post_to_gui(lambda m=prog_msg: self.lbl_progress.config(text=m))
-
-                        ipc_lock = threading.Lock()
-
-                        def process_single_image(idx, img_id):
-                            short_name = img_id.split('/')[-1]
-                            layer_title = "%s_%s" % (short_name, comp)
-                            out_tif = os.path.join(tempfile.gettempdir(), "%s.tif" % layer_title)
-
-                            resp = gee_bridge.download_image(
-                                image_ids=[img_id],
-                                sensor=sensor,
-                                comp_code=comp,
-                                out_tif=out_tif,
-                                custom_bands=custom_bands,
-                                load_mode=load_mode,
-                                bbox=bbox,
-                                geojson_file=geojson_file,
-                                scale=pixel_size
-                            )
-
-                            if resp.get('success'):
-                                tif_file = resp.get('file')
-                                with ipc_lock:
-                                    self.post_to_gui(lambda s=short_name: self.lbl_progress.config(
-                                        text=u"[Multicore] Carregando %s no TOC..." % s
-                                    ))
-                                    rep = gee_bridge.send_arcmap_command({
-                                        'action': 'load_layer',
-                                        'file': tif_file,
-                                        'name': layer_title,
-                                        'group': group_name,
-                                        'zoom': auto_zoom if (idx == 0) else False,
-                                        'comp': comp,
-                                        'sensor': sensor,
-                                        'custom_bands': custom_bands
-                                    }, timeout=120)
-                                    if rep.get('success'):
-                                        return True, short_name, None
-                                    else:
-                                        return False, short_name, rep.get('message', '')
-                            else:
-                                return False, short_name, resp.get('message', 'Erro ao baixar imagem.')
-
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-                            future_map = {
-                                executor.submit(process_single_image, idx, img_id): img_id 
-                                for idx, img_id in enumerate(image_ids)
-                            }
-                            for future in concurrent.futures.as_completed(future_map):
-                                ok, short_name, err_msg = future.result()
-                                if ok:
-                                    loaded_count += 1
-                                    self.post_to_gui(lambda c=loaded_count, t=total, s=short_name: self.lbl_progress.config(
-                                        text=u"[Multicore %d/%d] '%s' carregada com sucesso!" % (c, t, s)
-                                    ))
-                                else:
-                                    if err_msg:
-                                        self.post_to_gui(lambda m=err_msg, s=short_name: messagebox.showwarning(
-                                            "Aviso ArcMap", 
-                                            u"Falha ao carregar '%s': %s" % (s, m), 
-                                            parent=self.root
-                                        ))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+                future_map = {
+                    executor.submit(process_single_image, idx, img_id): img_id 
+                    for idx, img_id in enumerate(image_ids)
+                }
+                for future in concurrent.futures.as_completed(future_map):
+                    ok, short_name, err_msg = future.result()
+                    if ok:
+                        loaded_count += 1
+                        pct = int((float(loaded_count) / total) * 90)
+                        self.set_progress(pct, u"%s[Multicore %d/%d] '%s' carregada!" % (q_info, loaded_count, total, short_name))
+                        self.set_row_status(short_name, u"✓ Carregado", tag="loaded")
                     else:
-                        # Carregar cada imagem sequencialmente
-                        for idx, img_id in enumerate(image_ids):
-                            short_name = img_id.split('/')[-1]
-                            layer_title = "%s_%s" % (short_name, comp)
-                            out_tif = os.path.join(tempfile.gettempdir(), "%s.tif" % layer_title)
+                        self.set_row_status(short_name, u"Falha", tag="error")
+                        if err_msg:
+                            self.post_to_gui(lambda m=err_msg, s=short_name: messagebox.showwarning(
+                                "Aviso ArcMap", 
+                                u"Falha ao carregar '%s': %s" % (s, m), 
+                                parent=self.root
+                            ))
+        else:
+            # Sequencial
+            for idx, img_id in enumerate(image_ids):
+                short_name = img_id.split('/')[-1]
+                layer_title = "%s_%s" % (short_name, comp)
+                out_tif = os.path.join(tempfile.gettempdir(), "%s.tif" % layer_title)
 
-                            prog_msg = "[Segundo Plano] Baixando %d de %d: %s..." % (idx + 1, total, short_name)
-                            self.post_to_gui(lambda m=prog_msg: self.lbl_progress.config(text=m))
+                base_pct = int((float(idx) / total) * 90)
+                q_remaining = self.download_queue.qsize()
+                q_info = (u"[Fila: %d pendente(s)] " % q_remaining) if q_remaining > 0 else ""
+                prog_msg = u"%sBaixando %d de %d: %s..." % (q_info, idx + 1, total, short_name)
+                self.set_progress(base_pct, prog_msg)
+                self.set_row_status(short_name, u"Baixando...", tag="downloading")
 
-                            resp = gee_bridge.download_image(
-                                image_ids=[img_id],
-                                sensor=sensor,
-                                comp_code=comp,
-                                out_tif=out_tif,
-                                custom_bands=custom_bands,
-                                load_mode=load_mode,
-                                bbox=bbox,
-                                geojson_file=geojson_file,
-                                scale=pixel_size
-                            )
-
-                            if resp.get('success'):
-                                tif_file = resp.get('file')
-                                self.post_to_gui(lambda s=short_name: self.lbl_progress.config(text="Carregando %s no TOC..." % s))
-                                rep = gee_bridge.send_arcmap_command({
-                                    'action': 'load_layer',
-                                    'file': tif_file,
-                                    'name': layer_title,
-                                    'group': group_name,
-                                    'zoom': auto_zoom if (idx == 0) else False,
-                                    'comp': comp,
-                                    'sensor': sensor,
-                                    'custom_bands': custom_bands
-                                }, timeout=120)
-                                if rep.get('success'):
-                                    loaded_count += 1
-                                else:
-                                    err_msg = rep.get('message', '')
-                                    self.post_to_gui(lambda m=err_msg: messagebox.showwarning("Aviso ArcMap", "ArcMap retornou: " + m, parent=self.root))
-                            else:
-                                err_msg = resp.get('message', 'Erro ao baixar imagem.')
-                                self.post_to_gui(lambda m=err_msg: messagebox.showerror("Erro de Download GEE", m, parent=self.root))
-
-                def finish_all():
-                    self.refresh_toc_rasters()
-                    if replace_target:
-                        if loaded_count > 0:
-                            self.lbl_progress.config(text="Concluido! Camada '%s' substituida no ArcMap." % replace_target)
-                            messagebox.showinfo("Substituicao Concluida", "Camada '%s' substituida com sucesso no TOC!" % replace_target, parent=self.root)
+                def on_single_prog(msg):
+                    if total == 1:
+                        if u"Particionando" in msg:
+                            self.set_progress(10, msg)
+                        elif u"Quadrante" in msg and u"/" in msg:
+                            try:
+                                import re
+                                m = re.search(r'Quadrante\s+(\d+)/(\d+)', msg)
+                                if m:
+                                    cq = int(m.group(1))
+                                    tq = int(m.group(2))
+                                    p = int(10 + (float(cq) / float(tq)) * 60)
+                                    self.set_progress(p, u"%sQuadrante %d de %d baixado..." % (q_info, cq, tq))
+                            except Exception:
+                                pass
+                        elif u"Mesclando" in msg:
+                            self.set_progress(75, u"%sMesclando quadrantes com 100%% resolução nativa..." % q_info)
+                        elif u"salvando" in msg:
+                            self.set_progress(70, u"%sDownload concluído, finalizando arquivo..." % q_info)
                         else:
-                            self.lbl_progress.config(text="Falha na substituicao da camada.")
-                            messagebox.showwarning("Falha", "Nenhuma imagem foi carregada para substituir a camada no TOC.", parent=self.root)
+                            self.set_progress(None, msg)
+
+                resp = gee_bridge.download_image(
+                    image_ids=[img_id],
+                    sensor=sensor,
+                    comp_code=comp,
+                    out_tif=out_tif,
+                    custom_bands=custom_bands,
+                    load_mode=load_mode,
+                    bbox=bbox,
+                    geojson_file=geojson_file,
+                    scale=pixel_size,
+                    on_progress=on_single_prog
+                )
+
+                if resp.get('success'):
+                    tif_file = resp.get('file')
+                    action_name = u"Substituindo" if (img_id in replace_map) else u"Carregando"
+                    self.set_progress(int(base_pct + (90.0 / total) * 0.8), u"%s%s %s no TOC..." % (q_info, action_name, short_name))
+
+                    with self.ipc_lock:
+                        if img_id in replace_map:
+                            rep = gee_bridge.send_arcmap_command({
+                                'action': 'replace_layer',
+                                'file': tif_file,
+                                'target_layer': replace_map[img_id],
+                                'name': layer_title,
+                                'comp': comp,
+                                'sensor': sensor,
+                                'custom_bands': custom_bands
+                            }, timeout=120)
+                        else:
+                            rep = gee_bridge.send_arcmap_command({
+                                'action': 'load_layer',
+                                'file': tif_file,
+                                'name': layer_title,
+                                'group': group_name,
+                                'zoom': auto_zoom if (idx == 0) else False,
+                                'comp': comp,
+                                'sensor': sensor,
+                                'custom_bands': custom_bands
+                            }, timeout=120)
+
+                    if rep.get('success'):
+                        loaded_count += 1
+                        self.set_row_status(short_name, u"✓ Carregado", tag="loaded")
                     else:
-                        if loaded_count > 0:
-                            dest_info = ("ao grupo '%s'" % group_name) if group_name else "ao TOC"
-                            msg = "%d imagem(ns) carregada(s) %s com sucesso em RGB!" % (loaded_count, dest_info)
-                            self.lbl_progress.config(text="Concluido! " + msg)
-                            messagebox.showinfo("Carregamento Concluido", msg, parent=self.root)
-                        else:
-                            self.lbl_progress.config(text="Nenhuma imagem adicionada ao TOC.")
-                            messagebox.showwarning("Aviso", "Nenhuma imagem foi adicionada ao TOC. Verifique as mensagens de erro.", parent=self.root)
+                        self.set_row_status(short_name, u"Falha", tag="error")
+                        err_msg = rep.get('message', '')
+                        self.post_to_gui(lambda m=err_msg: messagebox.showwarning("Aviso ArcMap", "ArcMap retornou: " + m, parent=self.root))
+                else:
+                    self.set_row_status(short_name, u"Falha", tag="error")
+                    err_msg = resp.get('message', 'Erro ao baixar imagem.')
+                    self.post_to_gui(lambda m=err_msg: messagebox.showerror("Erro de Download GEE", m, parent=self.root))
 
-                self.post_to_gui(finish_all)
-            except Exception as e:
-                err_text = str(e)
-                def on_err():
-                    messagebox.showerror("Erro no Processo", err_text, parent=self.root)
-                    self.lbl_progress.config(text="Erro: " + err_text[:60])
-                self.post_to_gui(on_err)
-            finally:
-                def cleanup():
-                    self.is_downloading = False
-                    self.btn_add_toc.config(state=tk.NORMAL)
-                    self.btn_mosaic_toc.config(state=tk.NORMAL)
-                    if hasattr(self, 'btn_replace_toc'):
-                        self.btn_replace_toc.config(state=tk.NORMAL)
-                    if hasattr(self, 'btn_apply_comp_toc'):
-                        self.btn_apply_comp_toc.config(state=tk.NORMAL)
-                self.post_to_gui(cleanup)
-
-        threading.Thread(target=worker).start()
+        for i_id in image_ids:
+            if i_id in self.current_downloading_ids:
+                self.current_downloading_ids.remove(i_id)
 
 def main():
     win = GEEPluginWindow()

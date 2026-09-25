@@ -55,7 +55,7 @@ class OpenGEESelectorButton(object):
                 reload(gee_bridge)
             except Exception:
                 pass
-            gee_bridge.start_arcmap_ipc_timer(500)
+            gee_bridge.start_arcmap_ipc_timer(300)
             gee_bridge.export_arcmap_context()
         except Exception:
             pass
@@ -72,7 +72,7 @@ class OpenGEESelectorButton(object):
                 reload(gee_bridge)
             except Exception:
                 pass
-            gee_bridge.start_arcmap_ipc_timer(500)
+            gee_bridge.start_arcmap_ipc_timer(300)
             gee_bridge.export_arcmap_context()
             ok, msg = gee_bridge.launch_gui_process()
             if not ok:
@@ -92,6 +92,8 @@ class OpenGEESelectorButton(object):
                 ensure_icon_and_text_style()
 
             import gee_bridge
+            gee_bridge.start_arcmap_ipc_timer(250)
+
             # 1. Se o ArcMap ja estiver processando um comando, nao reentrar
             if getattr(gee_bridge, '_is_processing_cmd', False):
                 return
@@ -100,11 +102,61 @@ class OpenGEESelectorButton(object):
             if os.path.exists(gee_bridge.CMD_FILE):
                 gee_bridge.process_pending_arcmap_commands()
 
-            # 3. Atualizar contexto da tela periodicamente (a cada 3s) para manter escala da GUI atualizada
+            # 3. Atualizar contexto da tela periodicamente (a cada 0.6s) para manter escala da GUI atualizada
             import time
             now = time.time()
-            if now - self._last_ctx_time > 3.0:
+            if now - self._last_ctx_time > 0.6:
                 self._last_ctx_time = now
                 gee_bridge.export_arcmap_context()
         except Exception:
             pass
+
+class GEEExtension(object):
+    """Extensao nativa do ArcMap (autoLoad=True) para escutar eventos de tela, escala e TOC em tempo real"""
+    def __init__(self):
+        self.enabled = True
+        try:
+            import gee_bridge
+            gee_bridge.start_arcmap_ipc_timer(250)
+            gee_bridge.export_arcmap_context()
+        except Exception:
+            pass
+
+    def startup(self):
+        try:
+            import gee_bridge
+            gee_bridge.start_arcmap_ipc_timer(250)
+            gee_bridge.export_arcmap_context()
+        except Exception:
+            pass
+
+    def activeViewChanged(self):
+        """Disparado instantaneamente pelo ArcMap sempre que o usuario faz zoom, pan ou muda a escala"""
+        try:
+            import gee_bridge
+            gee_bridge.start_arcmap_ipc_timer(250)
+            gee_bridge.export_arcmap_context()
+            if os.path.exists(gee_bridge.CMD_FILE):
+                gee_bridge.process_pending_arcmap_commands()
+        except Exception:
+            pass
+
+    def contentsChanged(self):
+        """Disparado imediatamente quando camadas sao adicionadas, removidas ou alteradas no TOC"""
+        try:
+            import gee_bridge
+            gee_bridge.start_arcmap_ipc_timer(250)
+            gee_bridge.export_arcmap_context()
+            if os.path.exists(gee_bridge.CMD_FILE):
+                gee_bridge.process_pending_arcmap_commands()
+        except Exception:
+            pass
+
+    def spatialReferenceChanged(self):
+        try:
+            import gee_bridge
+            gee_bridge.start_arcmap_ipc_timer(250)
+            gee_bridge.export_arcmap_context()
+        except Exception:
+            pass
+

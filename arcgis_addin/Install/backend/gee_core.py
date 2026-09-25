@@ -30,11 +30,11 @@ COLLECTIONS = {
 }
 
 MULTIBAND_DEFAULT_BANDS = {
-    'S2': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12'],
-    'L8': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'],
-    'L7': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'],
-    'L5': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'],
-    'L4': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'],
+    'S2': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12'],
+    'L8': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7', 'ST_B10'],
+    'L7': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'ST_B6'],
+    'L5': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'ST_B6'],
+    'L4': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'ST_B6'],
     'L3': ['B4', 'B5', 'B6', 'B7'],
     'L2': ['B4', 'B5', 'B6', 'B7'],
     'L1': ['B4', 'B5', 'B6', 'B7']
@@ -89,8 +89,10 @@ COMPOSITIONS = {
         '753': {'label': 'NATURAL COM REMOCAO ATMOSFERICA - 753', 'bands': ['SR_B7', 'SR_B5', 'SR_B3']},
         '754': {'label': 'INFRAVERMELHO ONDA CURTA - 754', 'bands': ['SR_B7', 'SR_B5', 'SR_B4']},
         '654': {'label': 'ANALISE DA VEGETACAO - 654', 'bands': ['SR_B6', 'SR_B5', 'SR_B4']},
-        'MB_7': {'label': 'MULTIBANDA - 7 BANDAS (SR_B1 a SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True},
-        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B2 a SR_B7)', 'bands': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True},
+        'MB_8': {'label': 'MULTIBANDA - 8 BANDAS (SR_B1 a SR_B7 + ST_B10 Termica)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7', 'ST_B10'], 'multiband': True},
+        'MB_7': {'label': 'MULTIBANDA - 7 BANDAS OPTICAS (SR_B1 a SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True},
+        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS PRINCIPAIS (SR_B2 a SR_B7)', 'bands': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], 'multiband': True},
+        '10':   {'label': 'TERMICA - BANDA 10 (Temperatura de Superficie em C)', 'bands': ['ST_B10'], 'is_index': True},
         'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['SR_B5', 'SR_B4'], 'is_index': True},
         'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['SR_B3', 'SR_B5'], 'is_index': True},
         'NDMI': {'label': 'INDICE - NDMI (Umidade: NIR-SWIR1)', 'bands': ['SR_B5', 'SR_B6'], 'is_index': True},
@@ -110,7 +112,9 @@ COMPOSITIONS = {
         '742': {'label': 'NATURAL COM REMOCAO ATMOSFERICA - 742', 'bands': ['SR_B7', 'SR_B4', 'SR_B2']},
         '743': {'label': 'INFRAVERMELHO ONDA CURTA - 743', 'bands': ['SR_B7', 'SR_B4', 'SR_B3']},
         '543': {'label': 'ANALISE DA VEGETACAO - 543', 'bands': ['SR_B5', 'SR_B4', 'SR_B3']},
-        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True},
+        'MB_7': {'label': 'MULTIBANDA - 7 BANDAS (SR_B1 a SR_B5, SR_B7 + ST_B6 Termica)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'ST_B6'], 'multiband': True},
+        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS OPTICAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True},
+        '6':    {'label': 'TERMICA - BANDA 6 (Temperatura de Superficie em C)', 'bands': ['ST_B6'], 'is_index': True},
         'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
         'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['SR_B2', 'SR_B4'], 'is_index': True},
         'NDMI': {'label': 'INDICE - NDMI (Umidade: NIR-SWIR1)', 'bands': ['SR_B4', 'SR_B5'], 'is_index': True},
@@ -130,7 +134,9 @@ COMPOSITIONS = {
         '742': {'label': 'NATURAL COM REMOCAO ATMOSFERICA - 742', 'bands': ['SR_B7', 'SR_B4', 'SR_B2']},
         '743': {'label': 'INFRAVERMELHO ONDA CURTA - 743', 'bands': ['SR_B7', 'SR_B4', 'SR_B3']},
         '543': {'label': 'ANALISE DA VEGETACAO - 543', 'bands': ['SR_B5', 'SR_B4', 'SR_B3']},
-        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True},
+        'MB_7': {'label': 'MULTIBANDA - 7 BANDAS (SR_B1 a SR_B5, SR_B7 + ST_B6 Termica)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'ST_B6'], 'multiband': True},
+        'MB_6': {'label': 'MULTIBANDA - 6 BANDAS OPTICAS (SR_B1 a SR_B5, SR_B7)', 'bands': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'], 'multiband': True},
+        '6':    {'label': 'TERMICA - BANDA 6 (Temperatura de Superficie em C)', 'bands': ['ST_B6'], 'is_index': True},
         'NDVI': {'label': 'INDICE - NDVI (Vegetacao: NIR-RED)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
         'NDWI': {'label': 'INDICE - NDWI (Agua: GREEN-NIR)', 'bands': ['SR_B2', 'SR_B4'], 'is_index': True},
         'NDMI': {'label': 'INDICE - NDMI (Umidade: NIR-SWIR1)', 'bands': ['SR_B4', 'SR_B5'], 'is_index': True},
@@ -254,11 +260,19 @@ INDEX_PALETTES = {
     'NBR':  {'min': -0.4, 'max': 0.8, 'palette': ['#000000', '#d73027', '#f46d43', '#fdae61', '#fee08b', '#d9ef8b', '#a6d96a', '#1a9850']},
     'EVI':  {'min': -0.1, 'max': 0.8, 'palette': ['#0000ff', '#ffffff', '#fee08b', '#d9ef8b', '#91cf60', '#1a9850']},
     'SAVI': {'min': -0.1, 'max': 0.8, 'palette': ['#0000ff', '#ffffff', '#fee08b', '#d9ef8b', '#91cf60', '#1a9850']},
+    '10':   {'min': 10.0, 'max': 50.0, 'palette': ['#0000ff', '#00ffff', '#ffff00', '#ff0000', '#7f0000']},
+    '6':    {'min': 10.0, 'max': 50.0, 'palette': ['#0000ff', '#00ffff', '#ffff00', '#ff0000', '#7f0000']},
     'CUSTOM_MATH': {'min': -1.0, 'max': 1.0, 'palette': ['#0000ff', '#ffffff', '#ff0000']}
 }
 
 def compute_spectral_index(img, sensor, comp_code, custom_formula=None):
     """Calcula indice espectral ou formula customizada sobre a imagem (usando reflectancia normalizada)"""
+    # 0. Banda Termica (Surface Temperature em Celsius)
+    if comp_code in ['10', 'ST_B10']:
+        return img.select('ST_B10').multiply(0.00341802).add(149.0).subtract(273.15).rename('TEMP_CELSIUS').toFloat()
+    elif comp_code in ['6', 'ST_B6']:
+        return img.select('ST_B6').multiply(0.00341802).add(149.0).subtract(273.15).rename('TEMP_CELSIUS').toFloat()
+
     scaled = apply_sensor_scaling(img, sensor)
 
     # 1. Formula Matematica Customizada
@@ -639,9 +653,30 @@ def merge_geotiff_tiles(tile_paths, out_tif_path):
 
     raise RuntimeError("Falha ao mesclar quadrantes: nenhum motor de mosaico GDAL disponivel.")
 
+def get_safe_destination_path(target_path):
+    """Verifica se o arquivo de destino esta bloqueado por outro processo (ex: ArcMap).
+    Se estiver bloqueado, gera um nome alternativo com timestamp para evitar WinError 32."""
+    if not target_path:
+        return target_path
+    if not os.path.exists(target_path):
+        return target_path
+    try:
+        with open(target_path, 'r+b'):
+            pass
+        return target_path
+    except (IOError, OSError):
+        base, ext = os.path.splitext(target_path)
+        ts = int(time.time() * 1000) % 1000000
+        safe_path = "%s_%d%s" % (base, ts, ext)
+        sys.stderr.write("[ArcGEE] Arquivo '%s' bloqueado pelo ArcMap. Gravando em '%s'...\n" % (os.path.basename(target_path), os.path.basename(safe_path)))
+        sys.stderr.flush()
+        return safe_path
+
 def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, load_mode='multiband', aoi_geometry=None, bbox=None, out_tif_path=None, scale=None, crs='EPSG:4674'):
     import math
     import re
+
+    out_tif_path = get_safe_destination_path(out_tif_path)
 
     if not image_ids:
         raise ValueError("Nenhum ID de imagem fornecido.")
@@ -757,7 +792,11 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
                 raise e
 
         if url:
+            sys.stderr.write("[ArcGEE] Baixando arquivo GeoTIFF do GEE...\n")
+            sys.stderr.flush()
             urllib.request.urlretrieve(url, out_tif_path)
+            sys.stderr.write("[ArcGEE] Download concluído, salvando em disco.\n")
+            sys.stderr.flush()
             return out_tif_path
 
     # Caso 2: Area grande (> 32 MB / > 48 MB, ate escala 1:500.000)
@@ -768,6 +807,7 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
         "[ArcGEE] Area extensa detectada (estimado: %.1f MB). Particionando em %d quadrantes (%dx%d) com 100%% da resolucao nativa (%.1fm)...\n"
         % (est_mb, total_quads, nx, ny, safe_scale)
     )
+    sys.stderr.flush()
 
     temp_tiles_dir = tempfile.mkdtemp(prefix='arcgee_tiles_')
 
@@ -790,12 +830,14 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
                     urllib.request.urlretrieve(tile_url, tile_file)
                     if os.path.exists(tile_file) and os.path.getsize(tile_file) > 0:
                         sys.stderr.write("[ArcGEE] Quadrante %d/%d baixado com sucesso.\n" % (idx + 1, total_quads))
+                        sys.stderr.flush()
                         return (idx, tile_file)
             except Exception as ex:
                 err_text = str(ex)
                 if '0 bytes' in err_text or 'empty' in err_text.lower():
                     # Quadrante fora do poligono de recorte da AOI
                     sys.stderr.write("[ArcGEE] Quadrante %d/%d fora da AOI vetorial, ignorado.\n" % (idx + 1, total_quads))
+                    sys.stderr.flush()
                     return None
                 last_err = ex
                 time.sleep(1.0 + attempt * 1.5)
@@ -817,6 +859,7 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
         raise RuntimeError("Nenhum dado retornado para a regiao solicitada.")
 
     sys.stderr.write("[ArcGEE] Mesclando %d quadrantes em GeoTIFF unico final via GDAL...\n" % len(ordered_tile_files))
+    sys.stderr.flush()
     merge_geotiff_tiles(ordered_tile_files, out_tif_path)
 
     # Limpeza da pasta temporaria de quadrantes

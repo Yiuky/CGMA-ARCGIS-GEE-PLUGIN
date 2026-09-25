@@ -244,7 +244,7 @@ O plugin disponibiliza dois métodos principais para definir a região de intere
 
 ---
 
-### 6.5 Busca, Tabela de Resultados e Miniaturas Sob Demanda
+### 6.5 Busca e Tabela de Resultados
 
 1. Defina a **Data Inicial** e a **Data Final** utilizando o formato brasileiro (`DD/MM/AAAA`) ou os atalhos rápidos (`30d`, `60d`, `90d`).
 2. Ajuste o controle deslizante de **Cobertura Máxima de Nuvens** (ex: até 20%).
@@ -254,36 +254,44 @@ O plugin disponibiliza dois métodos principais para definir a região de intere
    - **Nuvens (%):** Cobertura estimada de nebulosidade sobre a cena.
    - **Tile / P-R:** Identificador do tile MGRS (Sentinel-2) ou Path/Row (Landsat).
    - **Nome da Cena:** Identificador oficial completo no acervo do Earth Engine.
-5. **Miniatura Sob Demanda:** Para inspecionar visualmente a nebulosidade real de uma cena antes de efetuar o download, selecione a linha desejada e clique em **`[ Gerar Miniatura ]`**. A miniatura colorida será renderizada instantaneamente no painel inferior.
+   - **Status:** Indicador de cenas já carregadas no ArcMap.
 
 ---
 
-### 6.6 Carregamento no TOC, Mosaicos Automáticos e Substituição
+### 6.6 Carregamento no TOC e Substituição de Camadas
 
 Com uma ou mais imagens selecionadas na grade:
 
 * **`[ Carregar no ArcMap ]`**:
-  Baixa a cena selecionada, projeta para as coordenadas do seu mapa, gera estatísticas e pirâmides em segundo plano e insere o raster dentro de uma camada de grupo (`GroupLayer`) nomeada no TOC, já com o realce e a composição RGB corretos.
-* **`[ Carregar Todas ]`**:
-  Aciona o motor **multicore** para baixar em lote todas as imagens resultantes da busca, acelerando o fluxo de séries temporais.
-* **`[ Criar Mosaico ]`**:
-  Gera um mosaico homogêneo aplicando a mediana temporal entre todas as cenas selecionadas. É a forma mais rápida de gerar imagens inteiramente livres de nuvens para áreas com passagens parciais.
+  Baixa a cena selecionada com 100% de resolução nativa (particionando automaticamente se exceder 48 MB), projeta para as coordenadas do mapa e insere o raster na Tabela de Conteúdos (**TOC**) do ArcMap com **renderização nativa RGB Composite** (`IRasterRGBRenderer`), abrindo os canais Red, Green e Blue no TOC.
 * **`[ Substituir no TOC ]`**:
   Atualiza uma camada raster previamente carregada, substituindo seus dados pela nova data sem bagunçar a ordem das camadas no mapa.
+* **`[ Aplicar Composição ]` e `[ ⚡ Garantir Stretch ]`**:
+  Aplica instantaneamente novas combinações de bandas ou restaura o realce dinâmico (DRA) em camadas existentes no TOC sem precisar refazer downloads.
 
 ---
 
-### 6.7 Painel de Configurações Avançadas (Stretch, DRA e Multicore)
+### 6.7 Painel de Configurações Avançadas (v1.7)
 
-Clique no botão **`[ ⚙ Configurações ]`** no canto superior direito para acessar as preferências do sistema:
+Clique no botão **`[ ⚙ Configurações ]`** no canto superior direito para acessar as preferências do sistema, organizadas em abas limpas e com botões de ação fixados na base:
 
-1. **Número de Núcleos da CPU (Multicore):** Configure a quantidade de threads simultâneas para downloads e geração de pirâmides.
-2. **Métodos de Realce (Stretch):**
-   - **Standard Deviations (Desvio Padrão):** Padrão industrial para sensoriamento remoto (permite escolher entre `1.5`, `2.0` ou `2.5` desvios).
-   - **Dynamic Range Adjustment (DRA):** Realce dinâmico em tempo real ajustado à extensão exibida na tela.
+#### Aba 1: Visualização & TOC
+1. **Métodos de Realce (Stretch):**
+   - **Standard Deviations (Desvio Padrão):** Padrão industrial para sensoriamento remoto (ex: `2.0` desvios padrão).
+   - **Dynamic Range Adjustment (DRA):** Realce dinâmico em tempo real ajustado à extensão visível na tela.
    - **Percent Clip:** Realce cortando extremos de histograma (ex: 2% a 98%).
    - **Minimum-Maximum:** Distribui o contraste entre os valores absolutos mínimo e máximo.
-3. **Margem de Buffer da AOI:** Define o raio extra em metros adicionado ao redor dos polígonos vetoriais (padrão: 1.000m).
+2. **Visualização de Camadas no TOC (Novidade v1.7):**
+   - **Ativado:** As imagens entram marcadas (`[x]`) e desenhadas no mapa.
+   - **Desativado:** As imagens entram desmarcadas (`[ ]`), ideal para carregar lotes de cenas pesadas sem congelar a renderização da tela.
+
+#### Aba 2: Processamento & Sistema
+1. **Desempenho e Aceleração Multicore:**
+   - Ativação de downloads paralelos e aceleração de estatísticas/pirâmides no ArcMap.
+2. **Margem de Buffer da AOI:**
+   - Define a margem extra em metros ao redor do retângulo envolvente do vetor (padrão: 1.000m).
+3. **Atualização do Plugin:**
+   - Acesso direto ao assistente integrado de atualização remota via GitHub ou arquivo ZIP local.
 
 ---
 

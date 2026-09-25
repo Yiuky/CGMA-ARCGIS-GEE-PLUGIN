@@ -2,7 +2,7 @@
   <Name>CGMA ArcGEE Explorer</Name>
   <AddInID>{ceae58c4-c44e-4edd-b8f4-1ba7d13b6b7d}</AddInID>
   <Description>CGMA ArcGEE Explorer - Integracao do Google Earth Engine para ArcGIS Desktop 10.8 (ArcMap).</Description>
-  <Version>1.6</Version>
+  <Version>1.7</Version>
   <Author>Joberth Gambati</Author>
   <Company>SEMA-MT</Company>
   <Date>25/09/2026</Date>
@@ -14,6 +14,9 @@
       <Commands>
         <Button id="gee_selector_addin.btn_open" class="OpenGEESelectorButton" caption="ArcGEE Explorer" category="CGMA ArcGEE Explorer" image="Images/icon.png" tip="Abre o CGMA ArcGEE Explorer" message="Abre o CGMA ArcGEE Explorer para carregar imagens e indices do Google Earth Engine" />
       </Commands>
+      <Extensions>
+        <Extension id="gee_selector_addin.extension" class="GEEExtension" name="GEEExtension" description="CGMA ArcGEE Explorer Real-Time Extension" autoLoad="true" />
+      </Extensions>
       <Toolbars>
         <Toolbar id="gee_selector_addin.toolbar" caption="CGMA ArcGEE Explorer" showInitially="true" autoArrangeButtons="true">
           <Items>

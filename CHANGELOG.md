@@ -4,6 +4,28 @@ Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
 O formato baseia-se no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e este projeto segue o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.7.0] - 2026-09-25
+
+### 🌟 Adicionado
+- **Opção de Controle de Visibilidade de Camadas no TOC:**
+  - Nova preferência em **⚙ Configurações**: *Carregar imagens no TOC com visualização ativada (visíveis no mapa)*.
+  - Quando desmarcada, as novas imagens entram desmarcadas no TOC (`[ ]`), ideal para carregar lotes de cenas pesadas sem congelar a renderização da tela do ArcMap.
+  - Preferência gravada de forma persistente em `~/.gee_plugin_settings.json` e aplicada tanto em camadas individuais quanto dentro de grupos.
+- **Redesenho Completo da Janela de Configurações:**
+  - Interface moderna com Abas (`ttk.Notebook`): *Visualização & TOC* e *Processamento & Sistema*.
+  - A barra inferior de botões (*Restaurar Padrões*, *Cancelar* e *Salvar Configurações*) agora fica prioritariamente fixada na base da janela (`side=BOTTOM`), garantindo que nunca seja suprimida ou empurrada para fora da tela.
+  - Dimensão compacta (540x510px) 100% compatível com monitores de qualquer resolução e escalas de DPI (125%, 150%).
+
+### 🛡️ Corrigido
+- **Simbologia RGB Composite e Exibição em Bandas no ArcMap:**
+  - Correção na simbologia de rasters com 3 ou mais bandas: injeção direta de `esriCarto.RasterRGBRenderer` (`IRasterRGBRenderer`) via ArcObjects com Stretch dinâmico (DRA), garantindo que a camada abra imediatamente como RGB no TOC (com canais Red, Green e Blue) em vez de rampa única de valores em escala de cinza (*Value High/Low*).
+- **Seleção Estrita de Bandas no Download Multibanda:**
+  - Ao selecionar uma composição (ex: `1182 - AGRICULTURA - 11.8.2`), o plugin agora exporta estritamente as bandas da composição selecionada (B11, B8, B2), em vez de forçar o download desnecessário de todas as 12 bandas do satélite.
+- **Tratamento de Localização Regional e Vírgula Decimal no Salvamento de Configurações:**
+  - Implementação de parsing resiliente de números (`_safe_float` e `_safe_int`), prevenindo exceções de `ValueError` causadas por vírgula em locale pt-BR nos Spinboxes (`2,0` -> `2.0`).
+
+---
+
 ## [1.6.0] - 2026-09-25
 
 ### 🌟 Adicionado
