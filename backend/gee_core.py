@@ -99,7 +99,8 @@ COMPOSITIONS = {
         'NBR':  {'label': 'INDICE - NBR (Queimadas: NIR-SWIR2)', 'bands': ['SR_B5', 'SR_B7'], 'is_index': True},
         'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['SR_B5', 'SR_B4', 'SR_B2'], 'is_index': True},
         'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['SR_B5', 'SR_B4'], 'is_index': True},
-        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
+        'CUSTOM_BANDS': {'label': 'BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: SR_B5,SR_B4,SR_B3)', 'bands': []},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA MATEMATICA (ex: (SR_B5-SR_B4)/(SR_B5+SR_B4))', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'L7': {
         '321': {'label': 'COR NATURAL - 321', 'bands': ['SR_B3', 'SR_B2', 'SR_B1']},
@@ -121,7 +122,8 @@ COMPOSITIONS = {
         'NBR':  {'label': 'INDICE - NBR (Queimadas: NIR-SWIR2)', 'bands': ['SR_B4', 'SR_B7'], 'is_index': True},
         'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['SR_B4', 'SR_B3', 'SR_B1'], 'is_index': True},
         'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
-        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
+        'CUSTOM_BANDS': {'label': 'BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: SR_B4,SR_B3,SR_B2)', 'bands': []},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA MATEMATICA (ex: (SR_B4-SR_B3)/(SR_B4+SR_B3))', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'L5': {
         '321': {'label': 'COR NATURAL - 321', 'bands': ['SR_B3', 'SR_B2', 'SR_B1']},
@@ -143,7 +145,8 @@ COMPOSITIONS = {
         'NBR':  {'label': 'INDICE - NBR (Queimadas: NIR-SWIR2)', 'bands': ['SR_B4', 'SR_B7'], 'is_index': True},
         'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['SR_B4', 'SR_B3', 'SR_B1'], 'is_index': True},
         'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
-        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
+        'CUSTOM_BANDS': {'label': 'BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: SR_B4,SR_B3,SR_B2)', 'bands': []},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA MATEMATICA (ex: (SR_B4-SR_B3)/(SR_B4+SR_B3))', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'L1': {
         '754': {'label': 'FALSA COR INFRAVERMELHA (PADRAO MSS) - 754', 'bands': ['B7', 'B5', 'B4']},
@@ -153,7 +156,8 @@ COMPOSITIONS = {
         'MB_4': {'label': 'MULTIBANDA - 4 BANDAS MSS (B4, B5, B6, B7)', 'bands': ['B4', 'B5', 'B6', 'B7'], 'multiband': True},
         'NDVI': {'label': 'INDICE - NDVI (Vegetacao: B7-B5)', 'bands': ['B7', 'B5'], 'is_index': True},
         'NDWI': {'label': 'INDICE - NDWI (Agua: B4-B7)', 'bands': ['B4', 'B7'], 'is_index': True},
-        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
+        'CUSTOM_BANDS': {'label': 'BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: B7,B5,B4)', 'bands': []},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA MATEMATICA (ex: (B7-B5)/(B7+B5))', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'S2': {
         '432': {'label': 'COR NATURAL - 4.3.2', 'bands': ['B4', 'B3', 'B2']},
@@ -184,7 +188,8 @@ COMPOSITIONS = {
         'NBR':  {'label': 'INDICE - NBR (Queimadas: B8-B12)', 'bands': ['B8', 'B12'], 'is_index': True},
         'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['B8', 'B4', 'B2'], 'is_index': True},
         'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['B8', 'B4'], 'is_index': True},
-        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
+        'CUSTOM_BANDS': {'label': 'BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: B8,B4,B3)', 'bands': []},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA MATEMATICA (ex: (B8-B4)/(B8+B4))', 'bands': [], 'is_index': True, 'is_custom': True}
     }
 }
 COMPOSITIONS['L4'] = COMPOSITIONS['L5']
@@ -276,7 +281,8 @@ def compute_spectral_index(img, sensor, comp_code, custom_formula=None):
     scaled = apply_sensor_scaling(img, sensor)
 
     # 1. Formula Matematica Customizada
-    if comp_code == 'CUSTOM_MATH' or (custom_formula and ('(' in custom_formula or '+' in custom_formula or '-' in custom_formula or '/' in custom_formula or '*' in custom_formula)):
+    has_formula = bool(custom_formula and any(op in custom_formula for op in ['+', '-', '*', '/', '(', ')', '^']))
+    if has_formula or (comp_code == 'CUSTOM_MATH' and not custom_formula):
         formula = custom_formula or comp_code
         band_names = scaled.bandNames().getInfo()
         b_dict = {}
@@ -692,6 +698,21 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
         else:
             cleaned_ids.append(img_id)
 
+    # 0. Deteccao automatica do sensor real a partir do ID da imagem para evitar divergencia de satelite
+    first_id = cleaned_ids[0].upper()
+    if 'COPERNICUS/S2' in first_id:
+        sensor = 'S2'
+    elif 'LANDSAT/LC08' in first_id or 'LANDSAT/LC09' in first_id:
+        sensor = 'L8'
+    elif 'LANDSAT/LE07' in first_id:
+        sensor = 'L7'
+    elif 'LANDSAT/LT05' in first_id:
+        sensor = 'L5'
+    elif 'LANDSAT/LT04' in first_id:
+        sensor = 'L4'
+    elif 'LANDSAT/LM0' in first_id:
+        sensor = 'L1'
+
     if len(cleaned_ids) == 1:
         img = ee.Image(cleaned_ids[0])
     else:
@@ -701,37 +722,65 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
     comp_map = COMPOSITIONS.get(sensor, COMPOSITIONS['L8'])
     comp_info = comp_map.get(composition_code, {})
 
-    is_index = comp_info.get('is_index', False) or composition_code in ['NDVI', 'NDWI', 'NDMI', 'NBR', 'EVI', 'SAVI', 'CUSTOM_MATH']
+    def is_math_expr(text):
+        if not text:
+            return False
+        return any(op in text for op in ['+', '-', '*', '/', '(', ')', '^'])
 
-    if is_index:
+    def parse_bands(text, sens):
+        if not text:
+            return []
+        raw = [b.strip().upper() for b in re.split(r'[,;\s]+', text) if b.strip()]
+        out = []
+        for b in raw:
+            if sens in ['L8', 'L7', 'L5', 'L4']:
+                if b.startswith('B') and not b.startswith(('SR_', 'ST_')):
+                    if b == 'B10' and sens == 'L8':
+                        out.append('ST_B10')
+                    elif b == 'B6' and sens in ['L7', 'L5', 'L4']:
+                        out.append('ST_B6')
+                    else:
+                        out.append('SR_' + b)
+                else:
+                    out.append(b)
+            elif sens == 'S2':
+                # Remove prefixos Landsat se o usuario digitou SR_B* ou ST_B*
+                if b.startswith('SR_'):
+                    out.append(b.replace('SR_', ''))
+                elif b.startswith('ST_'):
+                    out.append(b.replace('ST_', ''))
+                else:
+                    out.append(b)
+            else:
+                out.append(b)
+        return out
+
+    custom_text = (custom_bands or '').strip()
+    is_custom_formula = bool(custom_text and is_math_expr(custom_text))
+    is_custom_band_list = bool(custom_text and not is_math_expr(custom_text))
+
+    if is_custom_formula or (composition_code in ['NDVI', 'NDWI', 'NDMI', 'NBR', 'EVI', 'SAVI'] and not is_custom_band_list) or (composition_code == 'CUSTOM_MATH' and not is_custom_band_list):
+        is_index = True
         is_multi = False
         bands = [composition_code]
-        formula = custom_bands if composition_code == 'CUSTOM_MATH' else None
+        formula = custom_text if (composition_code == 'CUSTOM_MATH' or is_custom_formula) else None
         export_img = compute_spectral_index(img, sensor, composition_code, custom_formula=formula)
-    elif (load_mode == 'multiband') or comp_info.get('multiband', False) or (custom_bands and len(custom_bands.split(',')) > 3):
-        is_multi = True
-        if custom_bands:
-            bands = [b.strip() for b in custom_bands.split(',') if b.strip()]
+    else:
+        is_index = False
+        if is_custom_band_list:
+            bands = parse_bands(custom_text, sensor)
         elif comp_info.get('bands'):
             bands = comp_info['bands']
-        else:
+        elif comp_info.get('multiband', False) or load_mode == 'multiband':
             bands = MULTIBAND_DEFAULT_BANDS.get(sensor, ['B4', 'B3', 'B2'])
-        export_img = img.select(bands)
-    else:
-        is_multi = False
-        if custom_bands:
-            bands = [b.strip() for b in custom_bands.split(',') if b.strip()][:3]
         else:
-            bands = comp_info.get('bands', ['B4', 'B3', 'B2'])[:3]
+            bands = ['B4', 'B3', 'B2'] if sensor == 'S2' else ['SR_B4', 'SR_B3', 'SR_B2']
 
-        scaled = apply_sensor_scaling(img, sensor)
-        vis_params = {
-            'bands': bands,
-            'min': 0.0,
-            'max': 0.7,
-            'gamma': 1.2
-        }
-        export_img = scaled.visualize(**vis_params)
+        if not bands:
+            bands = ['B4', 'B3', 'B2'] if sensor == 'S2' else ['SR_B4', 'SR_B3', 'SR_B2']
+
+        is_multi = (len(bands) > 1)
+        export_img = img.select(bands)
 
     region = None
     calc_bbox = None

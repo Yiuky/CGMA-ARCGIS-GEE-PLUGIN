@@ -99,7 +99,8 @@ COMPOSITIONS = {
         'NBR':  {'label': 'INDICE - NBR (Queimadas: NIR-SWIR2)', 'bands': ['SR_B5', 'SR_B7'], 'is_index': True},
         'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['SR_B5', 'SR_B4', 'SR_B2'], 'is_index': True},
         'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['SR_B5', 'SR_B4'], 'is_index': True},
-        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
+        'CUSTOM_BANDS': {'label': 'BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: SR_B5,SR_B4,SR_B3)', 'bands': []},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA MATEMATICA (ex: (SR_B5-SR_B4)/(SR_B5+SR_B4))', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'L7': {
         '321': {'label': 'COR NATURAL - 321', 'bands': ['SR_B3', 'SR_B2', 'SR_B1']},
@@ -121,7 +122,8 @@ COMPOSITIONS = {
         'NBR':  {'label': 'INDICE - NBR (Queimadas: NIR-SWIR2)', 'bands': ['SR_B4', 'SR_B7'], 'is_index': True},
         'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['SR_B4', 'SR_B3', 'SR_B1'], 'is_index': True},
         'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
-        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
+        'CUSTOM_BANDS': {'label': 'BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: SR_B4,SR_B3,SR_B2)', 'bands': []},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA MATEMATICA (ex: (SR_B4-SR_B3)/(SR_B4+SR_B3))', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'L5': {
         '321': {'label': 'COR NATURAL - 321', 'bands': ['SR_B3', 'SR_B2', 'SR_B1']},
@@ -143,7 +145,8 @@ COMPOSITIONS = {
         'NBR':  {'label': 'INDICE - NBR (Queimadas: NIR-SWIR2)', 'bands': ['SR_B4', 'SR_B7'], 'is_index': True},
         'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['SR_B4', 'SR_B3', 'SR_B1'], 'is_index': True},
         'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['SR_B4', 'SR_B3'], 'is_index': True},
-        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
+        'CUSTOM_BANDS': {'label': 'BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: SR_B4,SR_B3,SR_B2)', 'bands': []},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA MATEMATICA (ex: (SR_B4-SR_B3)/(SR_B4+SR_B3))', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'L1': {
         '754': {'label': 'FALSA COR INFRAVERMELHA (PADRAO MSS) - 754', 'bands': ['B7', 'B5', 'B4']},
@@ -153,7 +156,8 @@ COMPOSITIONS = {
         'MB_4': {'label': 'MULTIBANDA - 4 BANDAS MSS (B4, B5, B6, B7)', 'bands': ['B4', 'B5', 'B6', 'B7'], 'multiband': True},
         'NDVI': {'label': 'INDICE - NDVI (Vegetacao: B7-B5)', 'bands': ['B7', 'B5'], 'is_index': True},
         'NDWI': {'label': 'INDICE - NDWI (Agua: B4-B7)', 'bands': ['B4', 'B7'], 'is_index': True},
-        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
+        'CUSTOM_BANDS': {'label': 'BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: B7,B5,B4)', 'bands': []},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA MATEMATICA (ex: (B7-B5)/(B7+B5))', 'bands': [], 'is_index': True, 'is_custom': True}
     },
     'S2': {
         '432': {'label': 'COR NATURAL - 4.3.2', 'bands': ['B4', 'B3', 'B2']},
@@ -184,7 +188,8 @@ COMPOSITIONS = {
         'NBR':  {'label': 'INDICE - NBR (Queimadas: B8-B12)', 'bands': ['B8', 'B12'], 'is_index': True},
         'EVI':  {'label': 'INDICE - EVI (Vegetacao Realcada)', 'bands': ['B8', 'B4', 'B2'], 'is_index': True},
         'SAVI': {'label': 'INDICE - SAVI (Ajustado ao Solo)', 'bands': ['B8', 'B4'], 'is_index': True},
-        'CUSTOM_MATH': {'label': 'INDICE - FORMULA PERSONALIZADA...', 'bands': [], 'is_index': True, 'is_custom': True}
+        'CUSTOM_BANDS': {'label': 'BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: B8,B4,B3)', 'bands': []},
+        'CUSTOM_MATH': {'label': 'INDICE - FORMULA MATEMATICA (ex: (B8-B4)/(B8+B4))', 'bands': [], 'is_index': True, 'is_custom': True}
     }
 }
 COMPOSITIONS['L4'] = COMPOSITIONS['L5']
@@ -679,12 +684,23 @@ def save_plugin_settings(settings):
 def resolve_rgb_band_indices(sensor, comp_code, custom_bands=None, band_count=None):
     """Retorna os indices 0-based [R, G, B] para a simbologia do raster baixado,
     preservando todas as bandas no raster e direcionando as cores iniciais."""
+    def is_math_expr(text):
+        if not text:
+            return False
+        return any(op in text for op in ['+', '-', '*', '/', '(', ')', '^'])
+
     raster_bands = []
     if custom_bands:
         if isinstance(custom_bands, (list, tuple)):
             raster_bands = [str(b).strip() for b in custom_bands if str(b).strip()]
-        elif isinstance(custom_bands, basestring):
-            raster_bands = [b.strip() for b in custom_bands.split(',') if b.strip()]
+        else:
+            import re
+            raster_bands = [b.strip() for b in re.split(r'[,;\s]+', str(custom_bands)) if b.strip()]
+
+        # Se o usuario especificou bandas personalizadas e ha pelo menos 3 bandas,
+        # a ordem digitada define diretamente a composicao RGB inicial (R=0, G=1, B=2)
+        if len(raster_bands) >= 3 and not is_math_expr(str(custom_bands)):
+            return (0, 1, 2)
     
     comp_info = COMPOSITIONS.get(sensor, {}).get(comp_code, {})
     if not raster_bands:

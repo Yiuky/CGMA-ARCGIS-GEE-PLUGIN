@@ -13,7 +13,7 @@
   <a href="https://www.esri.com/"><img src="https://img.shields.io/badge/ArcGIS%20Desktop-10.8%20%7C%2010.8.2-0079C1.svg?logo=esri&logoColor=white" alt="ArcGIS Desktop"></a>
   <a href="https://earthengine.google.com/"><img src="https://img.shields.io/badge/Google%20Earth%20Engine-API-4285F4.svg?logo=googleearthengine&logoColor=white" alt="Google Earth Engine"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-2.7%20%7C%203.9+-3776AB.svg?logo=python&logoColor=white" alt="Python Version"></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Versão-v1.7%20Estável-28A745.svg" alt="Versão v1.7"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Versão-v1.8%20Estável-28A745.svg" alt="Versão v1.8"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License MIT"></a>
   <a href="https://github.com/Yiuky/arcgis-google-earth-engine-explorer"><img src="https://img.shields.io/badge/GitHub-arcgis--google--earth--engine--explorer-181717.svg?logo=github&logoColor=white" alt="GitHub Repository"></a>
 </p>
@@ -46,7 +46,13 @@ Com o ArcGEE Explorer, o operador filtra cenas orbitais no tempo e no espaço, i
 
 ## 🌟 Principais Recursos e Diferenciais
 
-* **🎨 Simbologia RGB Nativa e Seleção Estrita de Bandas (Novidade v1.7):**
+* **🛰️ Bandas Personalizadas, Atualizador Desacoplado & Informações de Sensores (Novidade v1.8):**
+  * **Bandas Personalizadas Resilientes:** Digite qualquer combinação de bandas separadas por vírgula (ex: `B4,B3,B2` ou `B8,B4,B3`) e carregue diretamente como RGB nativo no ArcMap sem conversão indevida para índice espectral monobanda.
+  * **Conversão e Auto-Detecção de Satélite:** O plugin detecta automaticamente a coleção correta da cena e traduz nomenclaturas cruzadas (ex: `SR_B5` $\leftrightarrow$ `B5`).
+  * **Exibição de Bandas Disponíveis:** Quadro azul informativo exibe em tempo real todas as bandas válidas do satélite selecionado.
+  * **Atualizador Offline e Online Desacoplado:** Atualização via arquivo ZIP local ou repositório GitHub sem qualquer travamento de arquivos do Windows (`WinError 32`), graças ao pipeline de execução desanexada em Staging.
+
+* **🎨 Simbologia RGB Nativa e Seleção Estrita de Bandas (v1.7):**
   * **Renderização RGB Composite Imediata:** Ao carregar no ArcMap, rasters com 3 bandas utilizam o renderizador nativo `IRasterRGBRenderer`, abrindo os canais Red, Green e Blue no TOC com contraste e estatísticas dinâmicas (DRA) perfeitas.
   * **Seleção Estrita de Bandas:** Ao escolher uma composição (ex: `1182 - AGRICULTURA`), o plugin exporta estritamente as bandas selecionadas (B11, B8, B2), sem sobrecarregar o arquivo com bandas desnecessárias.
   * **Controle de Visibilidade no TOC:** Opção em Configurações para carregar novas camadas ativadas (`[x]`) ou desativadas (`[ ]`), ideal para baixar lotes pesados sem travar a renderização inicial da tela.

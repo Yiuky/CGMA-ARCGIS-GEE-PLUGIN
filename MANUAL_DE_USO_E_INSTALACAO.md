@@ -291,7 +291,17 @@ Clique no botão **`[ ⚙ Configurações ]`** no canto superior direito para ac
 2. **Margem de Buffer da AOI:**
    - Define a margem extra em metros ao redor do retângulo envolvente do vetor (padrão: 1.000m).
 3. **Atualização do Plugin:**
-   - Acesso direto ao assistente integrado de atualização remota via GitHub ou arquivo ZIP local.
+   - Acesso direto ao assistente integrado de atualização remota via GitHub ou arquivo ZIP local (processo desacoplado v1.8 sem travas de arquivos).
+
+---
+
+### 6.8 Bandas Personalizadas e Informações do Sensor (v1.8)
+
+1. **Quadro Informativo do Sensor:**
+   - O painel azul na coluna lateral exibe dinamicamente o período de operação, a coleção oficial do GEE e a listagem de todas as bandas disponíveis para o satélite selecionado (ex: `B1 a B12` no Sentinel-2, `SR_B1 a SR_B7, ST_B10` no Landsat).
+2. **Bandas Personalizadas Resilientes:**
+   - Ao selecionar a opção **`CUSTOM_BANDS - BANDAS PERSONALIZADAS`** ou digitar diretamente na caixa de texto bandas separadas por vírgula (ex: `B4,B3,B2` ou `B8,B4,B3`), o plugin baixa as bandas brutas em 100% da resolução nativa e as projeta diretamente como uma composição RGB Composite `(0, 1, 2)` no TOC do ArcMap.
+   - O backend realiza auto-detecção de satélite a partir da cena e tradução cruzada de nomenclaturas (ex: `SR_B5` $\leftrightarrow$ `B5`).
 
 ---
 

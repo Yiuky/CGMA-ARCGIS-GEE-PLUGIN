@@ -478,7 +478,7 @@ class GEEAboutDialog(object):
 
         lbl_sub = tk.Label(
             title_box,
-            text=u"Google Earth Engine Explorer for ArcGIS Desktop 10.8 (ArcMap)  |  v1.7",
+            text=u"Google Earth Engine Explorer for ArcGIS Desktop 10.8 (ArcMap)  |  v1.8",
             font=("Segoe UI", 9, "italic"),
             fg="#566573"
         )
@@ -499,7 +499,7 @@ class GEEAboutDialog(object):
         info_frame.pack(fill=tk.X, pady=(0, 10))
 
         info_text = (
-            u"• Versão: v1.7 (Simbologia RGB Dinâmica & Visibilidade no TOC)\n"
+            u"• Versão: v1.8 (Bandas Personalizadas, Atualizador Desacoplado & Info de Sensores)\n"
             u"• Organização: Coordenadoria de Geoprocessamento e Monitoramento Ambiental\n"
             u"  Secretaria de Estado de Meio Ambiente de Mato Grosso (CGMA / SEMA-MT)\n"
             u"• Desenvolvedor: Joberth Firmino Gambati\n"
@@ -608,205 +608,211 @@ class GEEUpdaterDialog(object):
         btn_close = ttk.Button(pad, text=u"Fechar", command=self.top.destroy)
         btn_close.pack(side=tk.RIGHT)
 
-    def _get_plugin_root(self):
-        curr = os.path.dirname(os.path.abspath(__file__))
-        candidates = [
-            os.path.abspath(os.path.join(curr, "..", "..")),
-            r"C:\Users\joberthgambati\.gemini\antigravity\scratch\gee_arcgis_plugin",
-            curr
-        ]
-        for c in candidates:
-            if os.path.exists(os.path.join(c, "arcgis_addin", "makeaddin.py")):
-                return c
-        return curr
+    def _apply_update_from_zip(self, zip_path):
+        import zipfile
+        import shutil
+        import tempfile
+        import subprocess
 
-    def _redeploy_plugin(self, root_dir):
-        user_prof = os.environ.get('USERPROFILE', '')
-        addin_dest = os.path.join(user_prof, r"Documents\ArcGIS\AddIns\Desktop10.8\{ceae58c4-c44e-4edd-b8f4-1ba7d13b6b7d}\GEE_Image_Selector.esriaddin")
-        cache_dir = os.path.join(user_prof, r"AppData\Local\ESRI\Desktop10.8\AssemblyCache\{CEAE58C4-C44E-4EDD-B8F4-1BA7D13B6B7D}")
+        self.lbl_status.config(text=u"Preparando arquivos para instalação...")
+        try:
+            staging_base = tempfile.gettempdir()
+            ts = int(time.time() * 1000) % 1000000
+            staging_dir = os.path.join(staging_base, "arcgee_stage_%d" % ts)
+            if os.path.exists(staging_dir):
+                try:
+                    shutil.rmtree(staging_dir)
+                except Exception:
+                    pass
+            safe_makedirs(staging_dir)
 
-        # 1. Compilar Add-In se makeaddin.py existir
-        make_script = os.path.join(root_dir, "arcgis_addin", "makeaddin.py")
-        if os.path.exists(make_script):
-            import subprocess
-            py_exe = sys.executable
+            # 1. Extrair ZIP para a pasta de staging
+            with zipfile.ZipFile(zip_path, 'r') as z:
+                z.extractall(staging_dir)
+
+            # 2. Localizar componentes essenciais
+            config_file = None
+            install_dir = None
+            backend_dir = None
+
+            for root, dirs, files in os.walk(staging_dir):
+                if 'config.xml' in files and not config_file:
+                    config_file = os.path.join(root, 'config.xml')
+                if 'gee_gui.py' in files and not install_dir:
+                    install_dir = root
+                if 'gee_core.py' in files and not backend_dir:
+                    backend_dir = root
+
+            if not config_file or not install_dir:
+                messagebox.showerror(
+                    u"Pacote Inválido",
+                    u"O arquivo ZIP selecionado não contém a estrutura do plugin CGMA ArcGEE Explorer (config.xml ou pasta Install com gee_gui.py).",
+                    parent=self.top
+                )
+                self.lbl_status.config(text=u"Falha: pacote ZIP inválido.")
+                return False
+
+            # Garantir sincronia da pasta backend dentro de Install
+            inst_backend = os.path.join(install_dir, 'backend')
+            if not os.path.exists(inst_backend):
+                safe_makedirs(inst_backend)
+            if backend_dir and os.path.abspath(backend_dir) != os.path.abspath(inst_backend):
+                for f in os.listdir(backend_dir):
+                    if f.endswith('.py') or f.endswith('.json'):
+                        shutil.copy2(os.path.join(backend_dir, f), os.path.join(inst_backend, f))
+
+            # 3. Gerar novo .esriaddin completo no staging
+            staged_addin = os.path.join(staging_dir, "GEE_Image_Selector.esriaddin")
+            with zipfile.ZipFile(staged_addin, 'w', zipfile.ZIP_DEFLATED) as z:
+                z.write(config_file, "config.xml")
+                for root, dirs, files in os.walk(install_dir):
+                    for f in files:
+                        if f.endswith('.pyc') or f.endswith('.pyo'):
+                            continue
+                        full_p = os.path.join(root, f)
+                        rel_p = "Install/" + os.path.relpath(full_p, install_dir).replace('\\', '/')
+                        z.write(full_p, rel_p)
+
+            # 4. Caminhos de instalacao no ArcGIS Desktop 10.8
+            user_prof = os.environ.get('USERPROFILE', '')
+            addin_dir = os.path.join(user_prof, r"Documents\ArcGIS\AddIns\Desktop10.8\{ceae58c4-c44e-4edd-b8f4-1ba7d13b6b7d}")
+            cache_dir = os.path.join(user_prof, r"AppData\Local\ESRI\Desktop10.8\AssemblyCache\{CEAE58C4-C44E-4EDD-B8F4-1BA7D13B6B7D}")
+
+            curr_dir = os.path.dirname(os.path.abspath(__file__))
+            candidates = [
+                os.path.abspath(os.path.join(curr_dir, "..", "..")),
+                r"C:\Users\joberthgambati\.gemini\antigravity\scratch\gee_arcgis_plugin"
+            ]
+            dev_repo = ""
+            for c in candidates:
+                if os.path.exists(os.path.join(c, "arcgis_addin", "makeaddin.py")):
+                    dev_repo = c
+                    break
+
+            # 5. Criar script em lote (.bat) desanexado para atualizar sem travas de arquivo
+            bat_path = os.path.join(staging_base, "apply_arcgee_update_%d.bat" % ts)
+            with open(bat_path, 'w') as f_bat:
+                f_bat.write(r"""@echo off
+chcp 65001 >nul
+ping 127.0.0.1 -n 3 >nul
+taskkill /f /im pythonw.exe 2>nul
+set ADDIN_DIR={addin_dir}
+set CACHE_DIR={cache_dir}
+if not exist "%ADDIN_DIR%" mkdir "%ADDIN_DIR%"
+if not exist "%CACHE_DIR%" mkdir "%CACHE_DIR%"
+
+copy /Y "{staged_addin}" "%ADDIN_DIR%\GEE_Image_Selector.esriaddin" >nul
+xcopy /s /e /y /i "{install_dir}\*" "%CACHE_DIR%\" >nul
+copy /Y "{config_file}" "%CACHE_DIR%\config.xml" >nul
+
+del /Q /F "%CACHE_DIR%\*.pyc" 2>nul
+del /Q /F "%CACHE_DIR%\backend\*.pyc" 2>nul
+if exist "C:\Python27\ArcGIS10.8\python.exe" (
+    "C:\Python27\ArcGIS10.8\python.exe" -m compileall "%CACHE_DIR%" >nul 2>nul
+)
+
+if exist "{dev_repo}\arcgis_addin" (
+    xcopy /s /e /y /i "{install_dir}\*" "{dev_repo}\arcgis_addin\Install\" >nul 2>nul
+    copy /Y "{staged_addin}" "{dev_repo}\arcgis_addin\GEE_Image_Selector.esriaddin" >nul 2>nul
+    if exist "{dev_repo}\backend" (
+        xcopy /s /e /y /i "{inst_backend}\*" "{dev_repo}\backend\" >nul 2>nul
+    )
+)
+
+rd /s /q "{staging_dir}" 2>nul
+
+mshta vbscript:Execute("MsgBox ""CGMA ArcGEE Explorer atualizado com sucesso!" & vbCrLf & vbCrLf & "O Add-In e o AssemblyCache foram atualizados e recompilados." & vbCrLf & "Reabra a ferramenta no ArcMap para carregar a nova versao."", 64, ""Atualizacao Concluida"":close")
+
+(goto) 2>nul & del "%~f0"
+""".format(
+                    addin_dir=addin_dir,
+                    cache_dir=cache_dir,
+                    staged_addin=staged_addin,
+                    install_dir=install_dir,
+                    config_file=config_file,
+                    dev_repo=dev_repo,
+                    inst_backend=inst_backend,
+                    staging_dir=staging_dir
+                ))
+
+            # 6. Exibir aviso e despachar o processo desanexado
+            messagebox.showinfo(
+                u"Finalizando Atualização",
+                u"O pacote foi validado com sucesso!\n\nA interface gráfica será fechada agora para liberar os arquivos e aplicar as alterações.\n\nUma notificação confirmará a conclusão em instantes.",
+                parent=self.top
+            )
+
+            # Flags para processo totalmente desanexado no Windows
+            DETACHED_PROCESS = 0x00000008
+            CREATE_NEW_PROCESS_GROUP = 0x00000200
+            flags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+
+            subprocess.Popen(["cmd.exe", "/c", bat_path], creationflags=flags, close_fds=True)
+
             try:
-                subprocess.call([py_exe, make_script], cwd=root_dir)
+                self.top.destroy()
             except Exception:
                 pass
-
-        addin_src = os.path.join(root_dir, "arcgis_addin", "GEE_Image_Selector.esriaddin")
-        if os.path.exists(addin_src) and os.path.exists(os.path.dirname(addin_dest)):
             try:
-                shutil.copy2(addin_src, addin_dest)
+                if hasattr(self.parent, 'root'):
+                    self.parent.root.destroy()
             except Exception:
                 pass
+            sys.exit(0)
 
-        # 2. Localizar origem dos arquivos de instalacao (Install)
-        install_src = os.path.join(root_dir, "arcgis_addin", "Install")
-        if not os.path.exists(install_src):
-            cand_inst = os.path.join(root_dir, "Install")
-            if os.path.exists(cand_inst):
-                install_src = cand_inst
+        except Exception as ex:
+            self.lbl_status.config(text=u"Erro na atualização.")
+            messagebox.showerror(u"Erro na Atualização", str(ex), parent=self.top)
+            return False
 
-        if os.path.exists(cache_dir):
-            # Limpar arquivos compilados .pyc antigos para evitar execucao de bytecode desatualizado
-            for root_w, dirs_w, files_w in os.walk(cache_dir):
-                for f_w in files_w:
-                    if f_w.endswith('.pyc'):
-                        try: os.remove(os.path.join(root_w, f_w))
-                        except Exception: pass
+    def _do_zip_update(self):
+        zip_path = filedialog.askopenfilename(
+            title=u"Selecione o arquivo ZIP de atualização do Plugin",
+            filetypes=[("Arquivos ZIP ou Add-In (*.zip;*.esriaddin)", "*.zip;*.esriaddin"), ("Todos os arquivos (*.*)", "*.*")],
+            parent=self.top
+        )
+        if not zip_path or not os.path.exists(zip_path):
+            return
 
-            if os.path.exists(install_src) and os.path.abspath(install_src) != os.path.abspath(cache_dir):
-                for item in os.listdir(install_src):
-                    s = os.path.join(install_src, item)
-                    d = os.path.join(cache_dir, item)
-                    try:
-                        if os.path.isdir(s):
-                            if os.path.exists(d): shutil.rmtree(d)
-                            shutil.copytree(s, d)
-                        else:
-                            shutil.copy2(s, d)
-                    except Exception:
-                        pass
+        self._apply_update_from_zip(zip_path)
 
     def _do_github_update(self):
         self.lbl_status.config(text=u"Conectando ao GitHub para baixar atualizações...")
         self.btn_git_update.config(state=tk.DISABLED)
 
         def worker():
-            root_dir = self._get_plugin_root()
-            success = False
-            msg = ""
             try:
-                git_dir = os.path.join(root_dir, ".git")
-                if os.path.exists(git_dir):
-                    import subprocess
-                    r = subprocess.call(["git", "pull", "origin", "main"], cwd=root_dir)
-                    if r == 0:
-                        success = True
-                        msg = u"Repositório sincronizado via Git com sucesso!"
-
-                if not success:
+                zip_url = "https://github.com/Yiuky/arcgis-google-earth-engine-explorer/archive/refs/heads/main.zip"
+                tmp_zip = os.path.join(tempfile.gettempdir(), "gee_plugin_update.zip")
+                if sys.version_info[0] < 3:
                     import urllib
-                    zip_url = "https://github.com/Yiuky/arcgis-google-earth-engine-explorer/archive/refs/heads/main.zip"
-                    tmp_zip = os.path.join(tempfile.gettempdir(), "gee_plugin_update.zip")
-                    try:
-                        if sys.version_info[0] < 3:
-                            urllib.urlretrieve(zip_url, tmp_zip)
-                        else:
-                            import urllib.request
-                            urllib.request.urlretrieve(zip_url, tmp_zip)
+                    urllib.urlretrieve(zip_url, tmp_zip)
+                else:
+                    import urllib.request
+                    urllib.request.urlretrieve(zip_url, tmp_zip)
 
-                        import zipfile
-                        with zipfile.ZipFile(tmp_zip, 'r') as z:
-                            for member in z.infolist():
-                                parts = member.filename.split('/', 1)
-                                if len(parts) > 1 and parts[1]:
-                                    target_p = os.path.join(root_dir, parts[1])
-                                    is_dir = member.filename.endswith('/') or member.filename.endswith('\\')
-                                    if is_dir:
-                                        safe_makedirs(target_p)
-                                    else:
-                                        parent_p = os.path.dirname(target_p)
-                                        if parent_p:
-                                            safe_makedirs(parent_p)
-                                        data = z.read(member.filename)
-                                        with open(target_p, 'wb') as dst:
-                                            dst.write(data)
-                        success = True
-                        msg = u"Código mais recente baixado e extraído do GitHub com sucesso!"
-                    except Exception as ex_dl:
-                        msg = u"Erro ao baixar do GitHub: " + str(ex_dl)
-
-                if success:
-                    self._redeploy_plugin(root_dir)
-
-                def show_result():
+                def proceed():
                     self.btn_git_update.config(state=tk.NORMAL)
-                    if success:
-                        self.lbl_status.config(text=u"Atualização concluída com sucesso!")
-                        messagebox.showinfo(
-                            u"Atualização Concluída",
-                            u"%s\n\nO Add-In e o AssemblyCache foram recompilados.\nReabra o Seletor GEE ou reinicie o ArcMap para aplicar as alterações." % msg,
-                            parent=self.top
-                        )
-                        self.top.destroy()
-                    else:
-                        self.lbl_status.config(text=u"Falha na atualização.")
-                        messagebox.showerror(u"Erro na Atualização", msg, parent=self.top)
+                    self._apply_update_from_zip(tmp_zip)
 
                 if hasattr(self.parent, 'post_to_gui'):
-                    self.parent.post_to_gui(show_result)
+                    self.parent.post_to_gui(proceed)
                 else:
-                    self.top.after(0, show_result)
-            except Exception as e:
-                err_text = str(e)
-                def on_err():
+                    self.top.after(0, proceed)
+            except Exception as ex_dl:
+                err_msg = str(ex_dl).decode('utf-8', 'replace') if sys.version_info[0] < 3 else str(ex_dl)
+                def show_err():
                     self.btn_git_update.config(state=tk.NORMAL)
-                    messagebox.showerror(u"Erro Inesperado", err_text, parent=self.top)
-                self.top.after(0, on_err)
+                    self.lbl_status.config(text=u"Erro ao conectar com GitHub.")
+                    messagebox.showerror(u"Erro ao Baixar do GitHub", err_msg, parent=self.top)
+                if hasattr(self.parent, 'post_to_gui'):
+                    self.parent.post_to_gui(show_err)
+                else:
+                    self.top.after(0, show_err)
 
         threading.Thread(target=worker).start()
 
-    def _do_zip_update(self):
-        zip_path = filedialog.askopenfilename(
-            title=u"Selecione o arquivo ZIP de atualização do Plugin",
-            filetypes=[("Arquivos ZIP (*.zip)", "*.zip")],
-            parent=self.top
-        )
-        if not zip_path or not os.path.exists(zip_path):
-            return
-
-        self.lbl_status.config(text=u"Extraindo pacote ZIP selecionado...")
-        root_dir = self._get_plugin_root()
-
-        try:
-            import zipfile
-            with zipfile.ZipFile(zip_path, 'r') as z:
-                has_root_prefix = False
-                names = z.namelist()
-                if names and '/' in names[0]:
-                    first_dir = names[0].split('/')[0]
-                    if all(n.startswith(first_dir + '/') for n in names if n != first_dir + '/'):
-                        has_root_prefix = True
-
-                for member in z.infolist():
-                    if has_root_prefix:
-                        parts = member.filename.split('/', 1)
-                        if len(parts) > 1 and parts[1]:
-                            rel_name = parts[1]
-                        else:
-                            continue
-                    else:
-                        rel_name = member.filename
-
-                    if not rel_name:
-                        continue
-                    target_p = os.path.join(root_dir, rel_name)
-                    is_dir = member.filename.endswith('/') or member.filename.endswith('\\')
-                    if is_dir:
-                        safe_makedirs(target_p)
-                    else:
-                        parent_p = os.path.dirname(target_p)
-                        if parent_p:
-                            safe_makedirs(parent_p)
-                        data = z.read(member.filename)
-                        with open(target_p, 'wb') as dst:
-                            dst.write(data)
-
-            self._redeploy_plugin(root_dir)
-            self.lbl_status.config(text=u"Atualização via ZIP concluída com sucesso!")
-            messagebox.showinfo(
-                u"Atualização Concluída",
-                u"O pacote ZIP foi aplicado e o Add-In recompilado com sucesso!\n\nReabra a ferramenta para carregar a nova versão.",
-                parent=self.top
-            )
-            self.top.destroy()
-        except Exception as e:
-            messagebox.showerror(u"Erro ao Extrair ZIP", str(e), parent=self.top)
-
-CURRENT_VERSION = "1.7"
+CURRENT_VERSION = "1.8"
 
 SENSOR_METADATA = {
     'S2': {
@@ -819,6 +825,7 @@ SENSOR_METADATA = {
         'start_year': 2017,
         'end_year': None,
         'res': '10m / 20m',
+        'available_bands': u"B1, B2, B3, B4, B5, B6, B7, B8, B8A, B9, B11, B12",
         'default_dates': ('30d', None),
         'notes': u'Refletância de Superfície (Nível 2A Harmonizado), bandas de 10m e 20m.'
     },
@@ -832,6 +839,7 @@ SENSOR_METADATA = {
         'start_year': 2013,
         'end_year': None,
         'res': '30m',
+        'available_bands': u"SR_B1 a SR_B7, ST_B10 (aceita B1 a B7)",
         'default_dates': ('30d', None),
         'notes': u'Refletância de Superfície USGS Col. 2 Nível 2 (L8 e L9 unificados).'
     },
@@ -845,6 +853,7 @@ SENSOR_METADATA = {
         'start_year': 1999,
         'end_year': None,
         'res': '30m',
+        'available_bands': u"SR_B1 a SR_B5, SR_B7, ST_B6 (aceita B1 a B7)",
         'default_dates': ('30d', None),
         'notes': u'Atenção: falha mecânica no corretor de linhas (SLC-off) a partir de 31/05/2003.'
     },
@@ -858,6 +867,7 @@ SENSOR_METADATA = {
         'start_year': 1984,
         'end_year': 2012,
         'res': '30m',
+        'available_bands': u"SR_B1 a SR_B5, SR_B7, ST_B6 (aceita B1 a B7)",
         'default_dates': ('01/06/2011', '30/09/2011'),
         'notes': u'Série histórica TM de 28 anos. Calibração geométrica e radiométrica Col. 2.'
     },
@@ -871,6 +881,7 @@ SENSOR_METADATA = {
         'start_year': 1982,
         'end_year': 1993,
         'res': '30m',
+        'available_bands': u"SR_B1 a SR_B5, SR_B7, ST_B6 (aceita B1 a B7)",
         'default_dates': ('01/06/1990', '30/09/1990'),
         'notes': u'Série histórica TM preliminar. Disponibilidade intermitente de dados.'
     },
@@ -884,6 +895,7 @@ SENSOR_METADATA = {
         'start_year': 1978,
         'end_year': 1983,
         'res': '60m',
+        'available_bands': u"B4, B5, B6, B7",
         'default_dates': ('01/06/1980', '30/09/1980'),
         'notes': u'Sensor MSS (Bandas B4, B5, B6, B7). Resolução espacial nativa de 60m.'
     },
@@ -897,6 +909,7 @@ SENSOR_METADATA = {
         'start_year': 1975,
         'end_year': 1982,
         'res': '60m',
+        'available_bands': u"B4, B5, B6, B7",
         'default_dates': ('01/06/1977', '30/09/1977'),
         'notes': u'Sensor MSS (Bandas B4, B5, B6, B7). Resolução espacial nativa de 60m.'
     },
@@ -910,6 +923,7 @@ SENSOR_METADATA = {
         'start_year': 1972,
         'end_year': 1978,
         'res': '60m',
+        'available_bands': u"B4, B5, B6, B7",
         'default_dates': ('01/06/1975', '30/09/1975'),
         'notes': u'Primeiro satélite de observação civil da Terra. Sensor MSS 60m.'
     }
@@ -946,7 +960,7 @@ def normalize_date(d_str):
 class GEEPluginWindow(object):
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title(u"CGMA ArcGEE Explorer (ArcGIS 10.8)  |  v1.7")
+        self.root.title(u"CGMA ArcGEE Explorer (ArcGIS 10.8)  |  v1.8")
         self.root.geometry("1100x740")
         self.root.minsize(960, 640)
         setup_window_icon(self.root)
@@ -1381,7 +1395,7 @@ class GEEPluginWindow(object):
         # Badge de Versao bem visivel
         self.lbl_v_badge = tk.Label(
             self.top_frame,
-            text=u" v1.7 ",
+            text=u" v1.8 ",
             font=("Segoe UI", 9, "bold"),
             bg="#1b4f72",
             fg="#ffffff",
@@ -1488,6 +1502,18 @@ class GEEPluginWindow(object):
             justify=tk.LEFT
         )
         self.lbl_sensor_detail.pack(fill=tk.X, anchor=tk.W)
+
+        self.lbl_sensor_bands = tk.Label(
+            self.sensor_info_frame,
+            text=u"🌈 Bandas: B1, B2, B3, B4, B5, B6, B7, B8, B8A, B9, B11, B12",
+            font=("Segoe UI", 7, "bold"),
+            bg="#eaf2f8",
+            fg="#117864",
+            anchor=tk.W,
+            justify=tk.LEFT,
+            wraplength=250
+        )
+        self.lbl_sensor_bands.pack(fill=tk.X, anchor=tk.W, pady=(2, 0))
 
         # Composicao de Bandas
         ttk.Label(left_frame, text="Composicao / Multibanda:", font=("Segoe UI", 9, "bold")).grid(row=3, column=0, sticky=tk.W, pady=2)
@@ -1694,7 +1720,7 @@ class GEEPluginWindow(object):
 
         self.lbl_progress = ttk.Label(
             status_bar_frame,
-            text=u"Pronto. (CGMA ArcGEE Explorer v1.7 - Resolução Nativa Estrita 100%)",
+            text=u"Pronto. (CGMA ArcGEE Explorer v1.8 - Resolução Nativa Estrita 100%)",
             anchor=tk.W
         )
         self.lbl_progress.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(2, 6))
@@ -1821,14 +1847,26 @@ class GEEPluginWindow(object):
             collection = meta.get('collection', '')
             agency = meta.get('agency', '')
             res = meta.get('res', '')
+            bands_str = meta.get('available_bands', '')
 
             self.lbl_sensor_period.config(text=u"📅 Período: %s" % period_str)
             self.lbl_sensor_detail.config(text=u"📡 GEE: %s (%s | %s)" % (collection, agency, res))
+            if hasattr(self, 'lbl_sensor_bands') and self.lbl_sensor_bands is not None:
+                self.lbl_sensor_bands.config(text=u"🌈 Bandas: %s" % bands_str)
 
     def on_sensor_changed(self, event=None):
         self.update_sensor_info_display()
         self.update_compositions_list()
+        self.on_composition_changed()
         self.update_default_group_name()
+
+        # Limpar tabela de resultados anteriores para evitar baixar imagem de satelite incompativel
+        if hasattr(self, 'tree') and self.tree is not None:
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+            self.images_cache = []
+        if hasattr(self, 'lbl_results_count') and self.lbl_results_count is not None:
+            self.lbl_results_count.config(text=u"Satélite alterado. Clique em [Buscar Imagens no GEE].")
 
         # Atualizar tamanho do pixel padrao de acordo com a resolucao nativa do satelite
         s = self.get_selected_sensor_code()
@@ -1892,12 +1930,19 @@ class GEEPluginWindow(object):
 
         if hasattr(self, 'lbl_custom_bands'):
             if comp == 'CUSTOM_MATH':
-                self.lbl_custom_bands.config(text=u"Fórmula Matemática (ex: (B8-B4)/(B8+B4) ou (SR_B5-SR_B4)/(SR_B5+SR_B4)):")
+                self.lbl_custom_bands.config(text=u"Fórmula Matemática de Índice (ex: (B8-B4)/(B8+B4)):")
                 curr = self.txt_custom_bands.get().strip()
-                if not curr or curr in ['B4,B3,B2', 'SR_B4,SR_B3,SR_B2']:
+                if not curr or not any(op in curr for op in ['+', '-', '*', '/', '(', ')', '^']):
                     def_formula = "(B8-B4)/(B8+B4)" if sensor == "S2" else "(SR_B5-SR_B4)/(SR_B5+SR_B4)"
                     self.txt_custom_bands.delete(0, tk.END)
                     self.txt_custom_bands.insert(0, def_formula)
+            elif comp == 'CUSTOM_BANDS':
+                self.lbl_custom_bands.config(text=u"Bandas Personalizadas (ex: B8,B4,B3 ou SR_B5,SR_B4,SR_B2):")
+                curr = self.txt_custom_bands.get().strip()
+                if not curr or any(op in curr for op in ['+', '-', '*', '/', '(', ')', '^']):
+                    def_bands = "B4,B3,B2" if sensor == "S2" else "SR_B4,SR_B3,SR_B2"
+                    self.txt_custom_bands.delete(0, tk.END)
+                    self.txt_custom_bands.insert(0, def_bands)
             elif comp in ['NDVI', 'NDWI', 'NDMI', 'NBR', 'EVI', 'SAVI']:
                 self.lbl_custom_bands.config(text=u"Índice Espectral (cálculo e paleta automáticos no GEE):")
             else:
@@ -2413,25 +2458,30 @@ class GEEPluginWindow(object):
                 else:
                     req_scale = 30.0
 
-            comp_is_index = comp in ['NDVI', 'NDWI', 'NDMI', 'NBR', 'EVI', 'SAVI', 'CUSTOM_MATH']
-            if comp_is_index:
+            has_custom = bool(custom_bands and custom_bands.strip())
+            is_formula = has_custom and any(op in custom_bands for op in ['+', '-', '*', '/', '(', ')', '^'])
+
+            if is_formula or (comp in ['NDVI', 'NDWI', 'NDMI', 'NBR', 'EVI', 'SAVI'] and not has_custom) or (comp == 'CUSTOM_MATH' and (is_formula or not has_custom)):
+                comp_is_index = True
                 n_b = 1
                 bpp = 4
-            elif load_mode == 'multiband':
-                if custom_bands:
-                    n_b = len([b for b in custom_bands.split(',') if b.strip()])
-                elif comp == 'MB_10':
-                    n_b = 10
-                elif comp == 'MB_12':
-                    n_b = 12
-                elif comp == 'MB_6':
-                    n_b = 6
+            else:
+                comp_is_index = False
+                if has_custom and not is_formula:
+                    import re
+                    n_b = max(1, len([b for b in re.split(r'[,;\s]+', custom_bands) if b.strip()]))
+                elif load_mode == 'multiband':
+                    if comp == 'MB_10':
+                        n_b = 10
+                    elif comp == 'MB_12':
+                        n_b = 12
+                    elif comp in ['MB_8', 'MB_7', 'MB_6']:
+                        n_b = int(comp.split('_')[1])
+                    else:
+                        n_b = 3
                 else:
                     n_b = 3
                 bpp = 2 * n_b
-            else:
-                n_b = 3
-                bpp = 3
 
             minx, miny, maxx, maxy = bbox
             lat_center = (miny + maxy) / 2.0

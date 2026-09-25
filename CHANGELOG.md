@@ -4,6 +4,28 @@ Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
 O formato baseia-se no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e este projeto segue o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.8.0] - 2026-09-25
+
+### 🌟 Adicionado
+- **Exibição de Bandas Disponíveis em Tempo Real:**
+  - Novo indicador visual dinâmico integrado ao quadro azul do sensor selecionado, exibindo a lista completa de bandas disponíveis no catálogo GEE (ex: `B1 a B12` no Sentinel-2, `SR_B1 a SR_B7, ST_B10` no Landsat 8/9, `B4 a B7` no Landsat MSS).
+  - Inclui ajuste automático de quebra de linha (`wraplength`) e atualização instantânea ao alternar o satélite.
+- **Opção Explícita de Bandas Personalizadas no Combobox:**
+  - Adicionada a opção `CUSTOM_BANDS - BANDAS PERSONALIZADAS (Digite na caixa abaixo: ex: B8,B4,B3)` em todos os sensores, diferenciando explicitamente a digitação de bandas soltas da digitação de fórmulas de índices biofísicos.
+
+### 🛡️ Corrigido
+- **Correção na Carga de Bandas Personalizadas Separadas por Vírgula:**
+  - Corrigido problema onde digitação de bandas separadas por vírgula (ex: `B4,B3,B2` ou `B8,B4,B3`) sob a opção de personalização caía no cálculo de expressão matemática do GEE, que retornava apenas a última banda como índice monobanda (`Float32`).
+  - Implementado discriminador inteligente: se o texto não contiver operadores matemáticos (`+`, `-`, `*`, `/`, `(`, `)`), é tratado categoricamente como lista de bandas (`is_index = False`), baixado em resolução nativa estrita e mapeado diretamente como RGB Composite `(0, 1, 2)` no ArcMap.
+- **Auto-Detecção de Satélite e Tradução Cruzada de Bandas:**
+  - O backend agora inspeciona o ID canônico da imagem no GEE e detecta o satélite real, traduzindo automaticamente prefixos de bandas (ex: converte `SR_B5` para `B5` em cenas Sentinel-2 e `B5` para `SR_B5` em cenas Landsat), eliminando o erro `Image.select: Band pattern did not match any bands`.
+  - Ao alterar o satélite no combobox, a lista de resultados da busca anterior é limpa automaticamente com aviso ao usuário, prevenindo disparar downloads com satélites conflitantes.
+- **Novo Atualizador Totalmente Desacoplado (Prevenção de Locks no Windows):**
+  - O instalador embutido via ZIP e GitHub agora utiliza ambiente de Staging temporário e despacha o processo de atualização de forma desanexada (`apply_arcgee_update.bat`), encerrando a interface gráfica antes de substituir arquivos no `AssemblyCache` e no `Documents\ArcGIS\AddIns`.
+  - Elimina completamente o erro de acesso negado (`[WinError 32]`) causado por travas de arquivo no Windows, garantindo atualização segura sem necessidade de desinstalar e reinstalar o Add-In.
+
+---
+
 ## [1.7.0] - 2026-09-25
 
 ### 🌟 Adicionado
