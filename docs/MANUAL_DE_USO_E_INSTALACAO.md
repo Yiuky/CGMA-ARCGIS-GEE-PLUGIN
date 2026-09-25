@@ -238,9 +238,9 @@ O plugin disponibiliza dois métodos principais para definir a região de intere
    - Ao selecionar uma camada vetorial (ex: limite de uma fazenda, terra indígena, unidade de conservação ou imóvel CAR), o plugin recorta **exatamente o polígono** da área de estudo.
    - **Buffer Envolvente de Segurança:** O plugin aplica automaticamente uma margem de proteção (padrão de 1.000 metros, configurável) ao redor do vetor para assegurar que nenhum pixel de borda seja cortado.
 
-> [!IMPORTANT]
-> **Proteção Preventiva de Limite (48 MB GEE):**
-> O Google Earth Engine impõe um teto de 48 MB por requisição de download direto. Se a área demandada na resolução nativa exceder 48 MB, o plugin **não degradará os dados silenciosamente**. Ele cancelará a requisição e orientará o operador a aproximar o zoom na tela ou utilizar um polígono vetorial mais específico.
+> [!TIP]
+> **Suporte a Downloads de Áreas Extensas (> 48 MB - Novidade v1.6):**
+> O Google Earth Engine possui um teto unitário de 48 MB por requisição. A partir da versão 1.6, o ArcGEE Explorer particiona automaticamente áreas extensas (em escalas de até 1:500.000 ou grandes polígonos AOI) em uma grade de quadrantes seguros, baixados em paralelo multithread e mesclados continuamente via GDAL, garantindo **100% da resolução espacial nativa** (10m no Sentinel-2, 30m no Landsat) sem cancelamentos ou perdas de dados.
 
 ---
 
@@ -317,9 +317,8 @@ A cada abertura, o plugin verifica silenciosamente no GitHub se há uma versão 
 * **Causa:** Escalas muito afastadas (ex: 1:1.000.000 ou visão do estado inteiro) cobrem centenas de milhares de quilômetros quadrados, ultrapassando os limites físicos de memória da máquina e da API do GEE.
 * **Solução:** Aproxime o zoom no ArcMap para a sua área de trabalho real (escala recomendada entre 1:50.000 e 1:250.000) ou clique no botão **`[ Ajustar 1:500.000 ]`** na barra superior da janela.
 
-### 2. "Limite Excedido: A extensão requer aproximadamente X MB (limite: 48 MB)"
-* **Causa:** O endpoint direto de download do Earth Engine possui um teto de 48 MB. Ao contrário de outros softwares que reduzem a qualidade do pixel silenciosamente (por exemplo, transformando 10m em 80m), o ArcGEE Explorer opera sob a **Garantia de Qualidade Nativa 100%** e recusa-se a degradar a imagem.
-* **Solução:** Dê mais zoom na área desejada ou utilize um polígono vetorial (Shapefile da propriedade/gleba) como filtro espacial em vez da extensão total da tela.
+### 2. "Como funciona o download de imagens com tamanho superior a 48 MB?"
+* **Comportamento v1.6:** O plugin conta com o algoritmo de *Smart Spatial Tiling*. Se a tela ou vetor demandar mais de 48 MB na resolução nativa (ex: uma tela inteira a 1:500.000 gerando 80 MB ou 200 MB), o backend divide a requisição em sub-quadrantes de até 32 MB cada, realiza os downloads concorrentes e os mescla de forma contínua em um GeoTIFF único com GDAL. O processo é 100% transparente para o usuário!
 
 ### 3. O botão na barra do ArcMap foi clicado, mas a janela não abre
 * **Causa 1:** O interpretador Python 3 não possui a biblioteca `earthengine-api` instalada.

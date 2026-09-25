@@ -4,6 +4,26 @@ Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
 O formato baseia-se no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e este projeto segue o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.6.0] - 2026-09-25
+
+### 🌟 Adicionado
+- **Download Inteligente de Áreas Extensas (> 48 MB) com Particionamento Espacial (*Smart Spatial Tiling*):**
+  - Permite o download de imagens e mosaicos cobrindo grandes extensões territoriais em escalas de até **1:500.000** sem bloqueio ou cancelamento pela cota de 48 MB do Google Earth Engine.
+  - **Garantia Estrita de Qualidade Nativa 100%:** Elimina qualquer necessidade de reamostragem, preservando estritamente os 10 metros nativos no Sentinel-2 e os 30 metros no Landsat em toda a extensão do mapa.
+  - **Grade Espacial Automatizada ($N_x \times N_y$):** O backend calcula a partição ótima de quadrantes baseada no número de bandas e resolução solicitada, mantendo cada requisição individual abaixo de 32 MB (com margem de segurança contra o teto de 48 MB).
+  - **Micro-Sobreposição (*Overlap*) de Bordas:** Adição de margem de 1.5 pixels entre quadrantes internos adjacentes para garantir zero costuras, frestas ou artefatos de arredondamento cartográfico.
+  - **Download Paralelo Multithread:** Os quadrantes da grade são baixados simultaneamente em segundo plano utilizando `concurrent.futures.ThreadPoolExecutor`, maximizando a velocidade de transferência.
+  - **Mosaico Automatizado com GDAL:** Motor de fusão inteligente multi-plataforma que mescla os quadrantes em um único GeoTIFF contínuo georreferenciado com compressão LZW, estrutura interna em blocos (`TILED=YES`) e suporte a BigTIFF (`BIGTIFF=IF_SAFER`).
+  - **Detecção e Descarte de Quadrantes Vazios na AOI:** Para camadas vetoriais irregulares, quadrantes que não interceptam o polígono de interesse são ignorados automaticamente, economizando banda e tempo de processamento.
+  - **Feedback Visual Dinâmico:** A barra de status e o diálogo de progresso informam em tempo real a estimativa de tamanho em megabytes e a quantidade de quadrantes sendo baixados e mesclados.
+
+### 🔄 Modificado
+- **Priorização de Interpretadores Python com GDAL Nativo:** A busca por interpretadores Python 3 agora prioriza ambientes com suporte simultâneo à Earth Engine API e à biblioteca `osgeo.gdal` nativa (como o Python do QGIS 3.x), com fallback automático para subprocessos e CLI.
+- **Atualização do Limite de Escala na Interface:** As mensagens e dicas da interface agora confirmam o suporte pleno a downloads de áreas de trabalho em escalas de até 1:500.000 em resolução nativa.
+
+### 🛡️ Corrigido
+- **Correção de Atribuição da Variável `is_multi`:** Resolução de erro em execuções no modo de carga rápida RGB (`load_mode='rgb'`), garantindo compatibilidade uniforme em todos os modos de exportação.
+
 ---
 
 ## [1.5.0] - 2026-09-24

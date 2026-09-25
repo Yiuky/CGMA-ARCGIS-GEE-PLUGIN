@@ -8,6 +8,10 @@ Baseado no script de seleção e mosaico GEE para Mato Grosso / Brasil.
 import os
 import sys
 import json
+import time
+import math
+import shutil
+import concurrent.futures
 import urllib.request
 import tempfile
 import ee
@@ -455,11 +459,9 @@ def get_thumbnail_url(image_id, sensor, composition_code, dimensions=350, bbox=N
 
 def compute_safe_scale(region_bbox, num_bands, is_multiband, requested_scale=None, sensor=None):
     """
-    Verifica se a resolucao nativa solicitada cabe no limite de 48 MB do GEE.
+    Retorna a resolucao nativa estrita (100% de qualidade) solicitada pelo usuario ou nativa do sensor.
     REGRA RIGOROSA: NUNCA diminuir qualidade/reamostrar silenciosamente!
-    Se a resolucao nativa estourar o limite de 48 MB, lanca ValueError para impedir o download com perda de qualidade.
     """
-    import math
     req = None
     if requested_scale is not None:
         try:
@@ -477,35 +479,165 @@ def compute_safe_scale(region_bbox, num_bands, is_multiband, requested_scale=Non
         else:
             req = 20.0 if num_bands > 3 else 30.0
 
+    return req
+
+def calculate_spatial_grid(region_bbox, scale, num_bands, is_multiband, max_chunk_mb=32):
+    """
+    Calcula a divisao da area em quadrantes quando o tamanho estimado excede
+    o limite de seguranca do GEE (max_chunk_mb, padrao 32 MB para garantir margem segura contra o teto de 48 MB).
+    Retorna (nx, ny, tot_bytes, grid_tiles).
+    """
+    import math
     if not region_bbox:
-        return req
+        return 1, 1, 0, []
 
     minx, miny, maxx, maxy = region_bbox
     lat_center = (miny + maxy) / 2.0
     lat_rad = math.radians(lat_center)
+    m_per_deg_lat = 110540.0
+    m_per_deg_lon = 111320.0 * math.cos(lat_rad)
+    width_m = abs(maxx - minx) * m_per_deg_lon
+    height_m = abs(maxy - miny) * m_per_deg_lat
 
-    width_m = abs(maxx - minx) * 111320.0 * math.cos(lat_rad)
-    height_m = abs(maxy - miny) * 110540.0
-    area_m2 = max(width_m * height_m, 1000.0)
+    bpp = 4 if (num_bands == 1 and not is_multiband) else ((2 * num_bands) if is_multiband else 3)
+    target_max_bytes = max_chunk_mb * 1024 * 1024
+    max_pixels = float(target_max_bytes) / float(bpp)
 
-    bytes_per_pixel = 4 if (num_bands == 1 and not is_multiband) else ((2 * num_bands) if is_multiband else 3)
-    target_max_bytes = 48 * 1024 * 1024  # 48 MB limite maximo do GEE
-    max_pixels = float(target_max_bytes) / float(bytes_per_pixel)
+    tot_px_x = max(1, int(math.ceil(width_m / float(scale))))
+    tot_px_y = max(1, int(math.ceil(height_m / float(scale))))
+    tot_px = tot_px_x * tot_px_y
+    tot_bytes = tot_px * bpp
 
-    min_safe_scale = math.sqrt(area_m2 / max_pixels)
+    if tot_bytes <= target_max_bytes:
+        return 1, 1, tot_bytes, [(minx, miny, maxx, maxy)]
 
-    if min_safe_scale > req * 1.05:  # Tolerancia de 5%
-        area_km2 = area_m2 / 1000000.0
-        est_mb = round((area_m2 / (req * req) * bytes_per_pixel) / (1024.0 * 1024.0), 1)
-        raise ValueError(
-            u"A área selecionada (%.0f km²) excede o limite do Google Earth Engine para a resolução nativa de %.1fm com %d bandas (tamanho estimado: %.1f MB, limite: 48 MB).\n\n"
-            u"Para garantir 100%% da qualidade da imagem sem qualquer perda por reamostragem, o download foi cancelado.\n\n"
-            u"Solução: Aproxime o zoom no ArcMap (escala <= 1:250.000) ou utilize uma camada vetorial (AOI) menor." % (
-                area_km2, req, num_bands, est_mb
+    ratio = math.sqrt(float(tot_px) / float(max_pixels))
+    aspect = float(tot_px_x) / float(tot_px_y) if tot_px_y > 0 else 1.0
+
+    nx = max(1, int(math.ceil(ratio * math.sqrt(aspect))))
+    ny = max(1, int(math.ceil(ratio / math.sqrt(aspect))))
+
+    while ((tot_px_x / nx) * (tot_px_y / ny)) > max_pixels:
+        if (tot_px_x / nx) >= (tot_px_y / ny):
+            nx += 1
+        else:
+            ny += 1
+
+    tiles = []
+    dx = (maxx - minx) / float(nx)
+    dy = (maxy - miny) / float(ny)
+    overlap_x = (scale / m_per_deg_lon) * 1.5
+    overlap_y = (scale / m_per_deg_lat) * 1.5
+
+    for r in range(ny):
+        for c in range(nx):
+            t_minx = minx + c * dx
+            t_maxx = minx + (c + 1) * dx
+            t_miny = miny + r * dy
+            t_maxy = miny + (r + 1) * dy
+            # Adicionar overlap nas bordas internas para zero costuras/linhas
+            if c > 0:
+                t_minx -= overlap_x
+            if c < nx - 1:
+                t_maxx += overlap_x
+            if r > 0:
+                t_miny -= overlap_y
+            if r < ny - 1:
+                t_maxy += overlap_y
+            tiles.append((t_minx, t_miny, t_maxx, t_maxy))
+
+    return nx, ny, tot_bytes, tiles
+
+def merge_geotiff_tiles(tile_paths, out_tif_path):
+    """
+    Mescla uma lista de GeoTIFFs em um unico arquivo GeoTIFF continuo
+    preservando bandas, tipos de dados, CRS e georreferenciamento.
+    Tenta em ordem:
+    1. osgeo.gdal (Python nativo no processo atual)
+    2. Subprocesso Python do QGIS com GDAL
+    3. Executaveis GDAL do sistema (gdalbuildvrt / gdal_translate)
+    """
+    import os, sys, tempfile, subprocess, shutil
+
+    if not tile_paths:
+        raise ValueError("Nenhum arquivo de quadrante para mesclar.")
+
+    if len(tile_paths) == 1:
+        os.makedirs(os.path.dirname(os.path.abspath(out_tif_path)), exist_ok=True)
+        shutil.copy2(tile_paths[0], out_tif_path)
+        return out_tif_path
+
+    os.makedirs(os.path.dirname(os.path.abspath(out_tif_path)), exist_ok=True)
+
+    # 1. osgeo.gdal nativo no processo atual
+    try:
+        from osgeo import gdal
+        vrt_opts = gdal.BuildVRTOptions(resampleAlg='near')
+        vrt = gdal.BuildVRT('', tile_paths, options=vrt_opts)
+        if vrt is not None:
+            trans_opts = gdal.TranslateOptions(
+                format='GTiff',
+                creationOptions=['COMPRESS=LZW', 'TILED=YES', 'BIGTIFF=IF_SAFER']
             )
-        )
+            ds = gdal.Translate(out_tif_path, vrt, options=trans_opts)
+            ds = None
+            vrt = None
+            if os.path.exists(out_tif_path) and os.path.getsize(out_tif_path) > 1024:
+                return out_tif_path
+    except Exception as e:
+        sys.stderr.write("[ArcGEE] GDAL nativo: %s. Tentando alternativas...\n" % str(e))
 
-    return req
+    # 2. Subprocesso Python do QGIS (que possui GDAL nativo C++)
+    qgis_py_candidates = [
+        r"C:\Program Files\QGIS 3.44.10\apps\Python312\python.exe",
+        r"C:\Program Files\QGIS 3.34.10\apps\Python312\python.exe",
+        r"C:\Program Files\QGIS 3.28\apps\Python39\python.exe",
+    ]
+    for qpy in qgis_py_candidates:
+        if os.path.exists(qpy):
+            try:
+                merge_code = (
+                    "import sys\n"
+                    "from osgeo import gdal\n"
+                    "tiles = %r\n"
+                    "out_path = %r\n"
+                    "vrt = gdal.BuildVRT('', tiles)\n"
+                    "gdal.Translate(out_path, vrt, creationOptions=['COMPRESS=LZW', 'TILED=YES', 'BIGTIFF=IF_SAFER'])\n"
+                    "vrt = None\n"
+                ) % (tile_paths, out_tif_path)
+
+                proc = subprocess.run([qpy, "-c", merge_code], capture_output=True, text=True, timeout=300)
+                if proc.returncode == 0 and os.path.exists(out_tif_path) and os.path.getsize(out_tif_path) > 1024:
+                    return out_tif_path
+            except Exception as e2:
+                sys.stderr.write("[ArcGEE] QGIS Python subprocess: %s\n" % str(e2))
+
+    # 3. Executaveis GDAL do sistema
+    gdal_bin_dirs = [
+        r"C:\Program Files\QGIS 3.44.10\bin",
+        r"C:\Program Files\QGIS 3.34.10\bin",
+        r"C:\OSGeo4W\bin",
+        r"C:\OSGeo4W64\bin",
+    ]
+    for bdir in gdal_bin_dirs:
+        bvrt_exe = os.path.join(bdir, "gdalbuildvrt.exe")
+        trans_exe = os.path.join(bdir, "gdal_translate.exe")
+        if os.path.exists(bvrt_exe) and os.path.exists(trans_exe):
+            try:
+                vrt_temp = tempfile.mktemp(suffix='.vrt')
+                cmd_vrt = [bvrt_exe, vrt_temp] + tile_paths
+                subprocess.run(cmd_vrt, check=True, capture_output=True)
+                cmd_trans = [trans_exe, "-co", "COMPRESS=LZW", "-co", "TILED=YES", "-co", "BIGTIFF=IF_SAFER", vrt_temp, out_tif_path]
+                subprocess.run(cmd_trans, check=True, capture_output=True)
+                if os.path.exists(vrt_temp):
+                    try: os.remove(vrt_temp)
+                    except Exception: pass
+                if os.path.exists(out_tif_path) and os.path.getsize(out_tif_path) > 1024:
+                    return out_tif_path
+            except Exception as e3:
+                sys.stderr.write("[ArcGEE] GDAL CLI: %s\n" % str(e3))
+
+    raise RuntimeError("Falha ao mesclar quadrantes: nenhum motor de mosaico GDAL disponivel.")
 
 def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, load_mode='multiband', aoi_geometry=None, bbox=None, out_tif_path=None, scale=None, crs='EPSG:4674'):
     import math
@@ -551,6 +683,7 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
             bands = MULTIBAND_DEFAULT_BANDS.get(sensor, ['B4', 'B3', 'B2'])
         export_img = img.select(bands)
     else:
+        is_multi = False
         if custom_bands:
             bands = [b.strip() for b in custom_bands.split(',') if b.strip()][:3]
         else:
@@ -597,39 +730,99 @@ def download_geotiff(image_ids, sensor, composition_code, custom_bands=None, loa
 
     safe_scale = compute_safe_scale(calc_bbox, len(bands), is_multi, requested_scale=scale, sensor=sensor)
 
-    download_params = {
-        'scale': safe_scale,
-        'crs': crs,
-        'region': region,
-        'format': 'GEO_TIFF'
-    }
-
-    url = None
-    try:
-        url = export_img.getDownloadURL(download_params)
-    except Exception as e:
-        err_str = str(e)
-        m = re.search(r'Total request size \((\d+) bytes\) must be less than or equal to (\d+) bytes', err_str)
-        if m:
-            req_mb = round(float(m.group(1)) / (1024.0 * 1024.0), 1)
-            limit_mb = round(float(m.group(2)) / (1024.0 * 1024.0), 1)
-            raise ValueError(
-                u"O volume da área solicitada (%.1f MB) excede o limite de transferência do Google Earth Engine (%.1f MB) na resolução nativa de %.1fm com %d bandas.\n\n"
-                u"Para garantir 100%% da nitidez e qualidade original sem qualquer perda, o download não foi realizado.\n\n"
-                u"Por favor, aumente o zoom no ArcMap (escala <= 1:250.000) ou utilize uma camada vetorial (AOI) menor." % (
-                    req_mb, limit_mb, safe_scale, len(bands)
-                )
-            )
-        else:
-            raise e
-
-    if not url:
-        raise RuntimeError("Falha ao obter URL de download do GEE.")
+    nx, ny, tot_bytes, grid_tiles = calculate_spatial_grid(calc_bbox, safe_scale, len(bands), is_multi, max_chunk_mb=32)
 
     if not out_tif_path:
         first_name = cleaned_ids[0].split('/')[-1]
         out_tif_path = os.path.join(tempfile.gettempdir(), "%s_%s.tif" % (first_name, composition_code))
 
     os.makedirs(os.path.dirname(os.path.abspath(out_tif_path)), exist_ok=True)
-    urllib.request.urlretrieve(url, out_tif_path)
+
+    # Caso 1: Apenas 1 tile (cabe no limite unitario <= 32 MB)
+    if len(grid_tiles) <= 1:
+        download_params = {
+            'scale': safe_scale,
+            'crs': crs,
+            'region': region,
+            'format': 'GEO_TIFF'
+        }
+
+        url = None
+        try:
+            url = export_img.getDownloadURL(download_params)
+        except Exception as e:
+            err_str = str(e)
+            m = re.search(r'Total request size \((\d+) bytes\) must be less than or equal to (\d+) bytes', err_str)
+            if not m:
+                raise e
+
+        if url:
+            urllib.request.urlretrieve(url, out_tif_path)
+            return out_tif_path
+
+    # Caso 2: Area grande (> 32 MB / > 48 MB, ate escala 1:500.000)
+    # Particionamento automatico com 100% de resolucao nativa estrita e mosaico sem perda
+    total_quads = len(grid_tiles)
+    est_mb = tot_bytes / (1024.0 * 1024.0)
+    sys.stderr.write(
+        "[ArcGEE] Area extensa detectada (estimado: %.1f MB). Particionando em %d quadrantes (%dx%d) com 100%% da resolucao nativa (%.1fm)...\n"
+        % (est_mb, total_quads, nx, ny, safe_scale)
+    )
+
+    temp_tiles_dir = tempfile.mkdtemp(prefix='arcgee_tiles_')
+
+    def _download_tile(item):
+        idx, sub_bbox = item
+        tile_file = os.path.join(temp_tiles_dir, "tile_%03d.tif" % idx)
+        tile_region = ee.Geometry.BBox(sub_bbox[0], sub_bbox[1], sub_bbox[2], sub_bbox[3])
+        tile_params = {
+            'scale': safe_scale,
+            'crs': crs,
+            'region': tile_region,
+            'format': 'GEO_TIFF'
+        }
+
+        last_err = None
+        for attempt in range(3):
+            try:
+                tile_url = export_img.getDownloadURL(tile_params)
+                if tile_url:
+                    urllib.request.urlretrieve(tile_url, tile_file)
+                    if os.path.exists(tile_file) and os.path.getsize(tile_file) > 0:
+                        sys.stderr.write("[ArcGEE] Quadrante %d/%d baixado com sucesso.\n" % (idx + 1, total_quads))
+                        return (idx, tile_file)
+            except Exception as ex:
+                err_text = str(ex)
+                if '0 bytes' in err_text or 'empty' in err_text.lower():
+                    # Quadrante fora do poligono de recorte da AOI
+                    sys.stderr.write("[ArcGEE] Quadrante %d/%d fora da AOI vetorial, ignorado.\n" % (idx + 1, total_quads))
+                    return None
+                last_err = ex
+                time.sleep(1.0 + attempt * 1.5)
+
+        raise RuntimeError("Falha ao baixar quadrante %d/%d: %s" % (idx + 1, total_quads, str(last_err)))
+
+    # Download multithread paralelo dos quadrantes
+    max_workers = min(4, total_quads)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(_download_tile, (i, b)) for i, b in enumerate(grid_tiles)]
+        raw_results = [f.result() for f in concurrent.futures.as_completed(futures)]
+
+    # Filtrar quadrantes vazios e ordenar por indice
+    valid_results = [r for r in raw_results if r is not None]
+    valid_results.sort(key=lambda x: x[0])
+    ordered_tile_files = [x[1] for x in valid_results]
+
+    if not ordered_tile_files:
+        raise RuntimeError("Nenhum dado retornado para a regiao solicitada.")
+
+    sys.stderr.write("[ArcGEE] Mesclando %d quadrantes em GeoTIFF unico final via GDAL...\n" % len(ordered_tile_files))
+    merge_geotiff_tiles(ordered_tile_files, out_tif_path)
+
+    # Limpeza da pasta temporaria de quadrantes
+    try:
+        shutil.rmtree(temp_tiles_dir)
+    except Exception:
+        pass
+
     return out_tif_path

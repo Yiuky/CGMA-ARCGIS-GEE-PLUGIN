@@ -32,11 +32,12 @@ def find_python3():
 
     # 3. Lista de caminhos comuns no Windows
     candidates = [
+        os.environ.get("GEE_PYTHON3", ""),
         r"C:\CGMA_GEE_PLUGIN\venv\Scripts\python.exe",
-        r"C:\PRODUTIVIDADE_SIMCAR_DIGITAL\venv_p3\Scripts\python.exe",
         r"C:\Program Files\QGIS 3.44.10\apps\Python312\python.exe",
         r"C:\Program Files\QGIS 3.34.10\apps\Python312\python.exe",
         r"C:\Program Files\QGIS 3.28\apps\Python39\python.exe",
+        r"C:\PRODUTIVIDADE_SIMCAR_DIGITAL\venv_p3\Scripts\python.exe",
         r"C:\Python312\python.exe",
         r"C:\Python311\python.exe",
         r"C:\Python310\python.exe",

@@ -417,7 +417,7 @@ class GEEAboutDialog(object):
 
         lbl_sub = tk.Label(
             title_box,
-            text=u"Google Earth Engine Explorer for ArcGIS Desktop 10.8 (ArcMap)  |  v1.5",
+            text=u"Google Earth Engine Explorer for ArcGIS Desktop 10.8 (ArcMap)  |  v1.6",
             font=("Segoe UI", 9, "italic"),
             fg="#566573"
         )
@@ -438,7 +438,7 @@ class GEEAboutDialog(object):
         info_frame.pack(fill=tk.X, pady=(0, 10))
 
         info_text = (
-            u"• Versão: v1.5 (Garantia Estrita de Qualidade Nativa 100%)\n"
+            u"• Versão: v1.6 (Download Particionado > 48 MB & Qualidade Nativa 100%)\n"
             u"• Organização: Coordenadoria de Geoprocessamento e Monitoramento Ambiental\n"
             u"  Secretaria de Estado de Meio Ambiente de Mato Grosso (CGMA / SEMA-MT)\n"
             u"• Desenvolvedor: Joberth Firmino Gambati\n"
@@ -452,7 +452,7 @@ class GEEAboutDialog(object):
 
         tips_text = (
             u"1. Resolução Nativa: Sentinel-2 (10m) e Landsat (30m) sem qualquer perda.\n"
-            u"2. Limite GEE 48 MB: Para Sentinel-2, utilize zoom <= 1:250.000 ou Camada (AOI).\n"
+            u"2. Áreas Extensas (> 48 MB): Particionamento automático em quadrantes até 1:500.000 com resolução nativa estrita.\n"
             u"3. Buffer de AOI: Ajuste em 'Configurações' a margem em metros ao redor do vetor.\n"
             u"4. Simbologia e Bandas: Altere as bandas RGB no TOC diretamente com botão direito."
         )
@@ -745,7 +745,7 @@ class GEEUpdaterDialog(object):
         except Exception as e:
             messagebox.showerror(u"Erro ao Extrair ZIP", str(e), parent=self.top)
 
-CURRENT_VERSION = "1.5"
+CURRENT_VERSION = "1.6"
 
 SENSOR_METADATA = {
     'S2': {
@@ -885,7 +885,7 @@ def normalize_date(d_str):
 class GEEPluginWindow(object):
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title(u"CGMA ArcGEE Explorer (ArcGIS 10.8)  |  v1.5")
+        self.root.title(u"CGMA ArcGEE Explorer (ArcGIS 10.8)  |  v1.6")
         self.root.geometry("1100x740")
         self.root.minsize(960, 640)
         setup_window_icon(self.root)
@@ -1120,7 +1120,7 @@ class GEEPluginWindow(object):
         # Badge de Versao bem visivel
         self.lbl_v_badge = tk.Label(
             self.top_frame,
-            text=u" v1.5 ",
+            text=u" v1.6 ",
             font=("Segoe UI", 9, "bold"),
             bg="#1b4f72",
             fg="#ffffff",
@@ -1445,7 +1445,7 @@ class GEEPluginWindow(object):
         self.btn_mosaic_toc.pack(side=tk.LEFT)
 
         # 3. Barra de Status Inferior com Progresso
-        self.lbl_progress = ttk.Label(self.root, text=u"Pronto. (CGMA ArcGEE Explorer v1.5 - Resolução Nativa Estrita 100%)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
+        self.lbl_progress = ttk.Label(self.root, text=u"Pronto. (CGMA ArcGEE Explorer v1.6 - Resolução Nativa Estrita 100%)", relief=tk.SUNKEN, anchor=tk.W, padding=4)
         self.lbl_progress.pack(fill=tk.X, side=tk.BOTTOM)
 
     def update_map_scale_display(self):
@@ -2157,21 +2157,22 @@ class GEEPluginWindow(object):
             height_m = abs(maxy - miny) * 110540.0
             area_m2 = max(width_m * height_m, 1000.0)
             est_bytes = (area_m2 / (req_scale * req_scale)) * bpp
-            target_max_bytes = 48 * 1024 * 1024
-
-            if est_bytes > target_max_bytes * 1.05:
+            chunk_target = 32 * 1024 * 1024
+            if est_bytes > chunk_target:
                 est_mb = round(est_bytes / (1024.0 * 1024.0), 1)
-                area_km2 = round(area_m2 / 1000000.0, 1)
-                messagebox.showerror(
-                    u"Qualidade Nativa Estrita (Limite Excedido)",
-                    u"A extensão atual da tela (%.0f km²) requer aproximadamente %.1f MB para a resolução nativa de %.0fm com %d banda(s), excedendo o limite de 48 MB do Google Earth Engine.\n\n"
-                    u"Para garantir 100%% da nitidez e qualidade original sem qualquer perda por reamostragem, o download foi impedido.\n\n"
-                    u"Solução: Aumente o zoom no ArcMap (escala <= 1:250.000 para Sentinel-2 ou selecione menos bandas) ou utilize uma camada vetorial (AOI) menor." % (
-                        area_km2, est_mb, req_scale, n_b
-                    ),
-                    parent=self.root
-                )
-                return
+                num_quads = max(1, int(math.ceil(est_bytes / float(chunk_target))))
+                # Limite maximo de seguranca de 120 quadrantes (~3.8 GB)
+                if num_quads > 120:
+                    area_km2 = round(area_m2 / 1000000.0, 1)
+                    messagebox.showerror(
+                        u"Área Excessivamente Extensa",
+                        u"A área selecionada (%.0f km²) requer mais de %d quadrantes (> 3.5 GB) na resolução nativa de %.0fm com %d bandas.\n\n"
+                        u"Para viabilizar o processamento, aproxime o zoom no ArcMap (escala <= 1:500.000) ou utilize uma camada vetorial (AOI) menor." % (
+                            area_km2, num_quads, req_scale, n_b
+                        ),
+                        parent=self.root
+                    )
+                    return
 
         # Obter informacao do Grupo na thread principal
         group_name = None
@@ -2191,6 +2192,10 @@ class GEEPluginWindow(object):
         total = len(image_ids)
         if replace_target:
             self.lbl_progress.config(text="[Segundo Plano] Baixando imagem para substituir '%s' no TOC..." % replace_target)
+        elif est_bytes > 32 * 1024 * 1024:
+            est_mb = round(est_bytes / (1024.0 * 1024.0), 1)
+            quads = max(1, int(math.ceil(est_bytes / (32.0 * 1024.0 * 1024.0))))
+            self.lbl_progress.config(text=u"[Segundo Plano] Alta Resolução Nativa 100%% (~%.1f MB | %d quadrantes). Baixando e mesclando via GDAL..." % (est_mb, quads))
         else:
             self.lbl_progress.config(text="[Segundo Plano] Iniciando download de %d imagem(ns)..." % total)
 

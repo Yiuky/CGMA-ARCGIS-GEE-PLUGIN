@@ -13,7 +13,7 @@
   <a href="https://www.esri.com/"><img src="https://img.shields.io/badge/ArcGIS%20Desktop-10.8%20%7C%2010.8.2-0079C1.svg?logo=esri&logoColor=white" alt="ArcGIS Desktop"></a>
   <a href="https://earthengine.google.com/"><img src="https://img.shields.io/badge/Google%20Earth%20Engine-API-4285F4.svg?logo=googleearthengine&logoColor=white" alt="Google Earth Engine"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-2.7%20%7C%203.9+-3776AB.svg?logo=python&logoColor=white" alt="Python Version"></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Versão-v1.5%20Estável-28A745.svg" alt="Versão v1.5"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Versão-v1.6%20Estável-28A745.svg" alt="Versão v1.6"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License MIT"></a>
   <a href="https://github.com/Yiuky/arcgis-google-earth-engine-explorer"><img src="https://img.shields.io/badge/GitHub-arcgis--google--earth--engine--explorer-181717.svg?logo=github&logoColor=white" alt="GitHub Repository"></a>
 </p>
@@ -46,9 +46,10 @@ Com o ArcGEE Explorer, o operador filtra cenas orbitais no tempo e no espaço, i
 
 ## 🌟 Principais Recursos e Diferenciais
 
-* **🎯 Garantia Estrita de Qualidade Nativa 100%:**
-  * **Zero degradação silenciosa:** Proibição absoluta de reamostragem espacial ou compressão de pixel. Os dados do Sentinel-2 preservam estritamente seus 10 metros e o Landsat seus 30 metros.
-  * **Proteção Preventiva de Limite (48 MB GEE):** Se a requisição demandar um volume superior ao teto de 48 MB do Earth Engine, o plugin cancela preventivamente o download e instrui o usuário a aproximar o zoom (ex: escala <= 1:250.000) ou refinar a camada vetorial (AOI), prevenindo imagens corrompidas ou rebaixadas.
+* **🚀 Particionamento Espacial Inteligente (> 48 MB) e Qualidade Nativa 100% (Novidade v1.6):**
+  * **Downloads de Áreas Extensas até 1:500.000:** Requisições que superam o limite de 48 MB do Earth Engine são automaticamente particionadas em uma grade dinâmica de quadrantes seguros, baixadas em paralelo multithread e mescladas em um único GeoTIFF contínuo via GDAL (com compressão LZW e BigTIFF).
+  * **Zero degradação silenciosa:** Proibição absoluta de reamostragem espacial ou perda de nitidez. Os dados do Sentinel-2 preservam estritamente seus 10 metros e o Landsat seus 30 metros em toda a tela de trabalho.
+  * **Micro-sobreposição (*Overlap*) de 1.5 pixels:** Bordas internas sobrepostas garantem zero costuras, frestas ou descontinuidades visuais no raster final.
 
 * **🛰️ Período Operacional dos Sensores em Tempo Real (Novidade v1.5):**
   * Ao selecionar qualquer satélite/sensor na interface, os metadados de disponibilidade temporal de dados e o status de operação da missão são apresentados dinamicamente na tela (Sentinel-2, Landsat 9, Landsat 8, Landsat 7 ETM+, Landsat 4-5 TM e Landsat 1-5 MSS).
