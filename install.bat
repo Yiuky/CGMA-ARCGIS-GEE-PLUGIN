@@ -110,10 +110,10 @@ echo ======================================================================
 echo.
 echo PASSOS PARA USAR NO ARCMAP:
 echo   1. Abra o ArcMap 10.8.
-echo   2. Va no menu: Customize ^> Toolbars e marque "GEE Image Selector".
-echo   3. Clique no botao "Seletor GEE" na barra de ferramentas.
-echo   4. No topo da janela, clique em "Autenticar / Configurar Projeto GEE"
-echo      para conectar com sua conta Google Earth Engine.
+echo   2. Va no menu: Customize ^> Toolbars e marque "CGMA ArcGEE Explorer" (ou "GEE Image Selector").
+echo   3. Clique no botao "ArcGEE Explorer" na barra de ferramentas.
+echo   4. No topo da janela, clique em "Configurar Projeto GEE"
+echo      para conectar com seu ID de projeto Google Cloud / Earth Engine.
 echo.
 echo Para autenticar o GEE agora via linha de comando, execute:
 echo   autenticar_gee.bat
